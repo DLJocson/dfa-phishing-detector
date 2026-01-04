@@ -44,51 +44,129 @@ frontend/
 
 ## How to Run
 
-### Prerequisites
-- Python 3.8+
-- Node.js 16+
-- npm or yarn
+### Prerequisites Check
+Ensure you have these installed:
+- **Python 3.8+** - [Download](https://www.python.org/downloads/)
+- **Node.js 16+** - [Download](https://nodejs.org/)
+- **npm** (comes with Node.js)
 
-### Backend Setup
-
+Run these commands to verify:
 ```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate          # macOS/Linux
-# OR
-venv\Scripts\activate             # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python --version
+node --version
+npm --version
 ```
 
-Backend API: `http://localhost:8000`
+### Quick Start (Recommended)
 
-### Frontend Setup
+**Option 1: Run Both Backend & Frontend (Windows)**
+```bash
+# Terminal 1 - Backend
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
 ```bash
+# Terminal 2 - Frontend
 cd frontend
-
-# Install dependencies
 npm install
-
-# Optional: Create .env file
-# REACT_APP_API_URL=http://localhost:8000
-
-# Start development server
 npm start
 ```
 
-Frontend: `http://localhost:3000`
+**Option 2: Run Both Backend & Frontend (macOS/Linux)**
+```bash
+# Terminal 1 - Backend
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-### API Endpoints
+```bash
+# Terminal 2 - Frontend
+cd frontend
+npm install
+npm start
+```
 
-- `POST /analyze` - Analyze a URL
-- `GET /tokenize` - Tokenize a URL into components
-- `GET /docs` - Interactive API documentation (Swagger UI)
-- `GET /redoc` - API reference (ReDoc)
+### Accessing the Application
+
+Once both servers are running:
+- **Frontend**: Open [http://localhost:3000](http://localhost:3000) in your browser
+- **Backend API Docs**: Open [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Step-by-Step Backend Setup
+
+1. **Navigate to backend folder**
+   ```bash
+   cd backend
+   ```
+
+2. **Create virtual environment**
+   - Windows: `python -m venv venv`
+   - macOS/Linux: `python3 -m venv venv`
+
+3. **Activate virtual environment**
+   - Windows: `venv\Scripts\activate`
+   - macOS/Linux: `source venv/bin/activate`
+
+4. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+5. **Start backend server**
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+   ✅ Backend running at: `http://localhost:8000`
+
+### Step-by-Step Frontend Setup
+
+1. **Navigate to frontend folder** (in a new terminal)
+   ```bash
+   cd frontend
+   ```
+
+2. **Install Node dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start frontend development server**
+   ```bash
+   npm start
+   ```
+   ✅ Frontend running at: `http://localhost:3000`
+
+### Troubleshooting
+
+**Backend won't start?**
+- Ensure Python 3.8+ is installed
+- Verify virtual environment is activated (you should see `(venv)` in your terminal)
+- Check that port 8000 is not in use: `netstat -ano | findstr :8000` (Windows)
+
+**Frontend won't start?**
+- Ensure Node.js 16+ is installed
+- Delete `node_modules` folder and `package-lock.json`, then run `npm install` again
+- Check that port 3000 is not in use
+
+**Connection errors?**
+- Make sure both backend and frontend servers are running
+- Verify backend is at `http://localhost:8000/docs` (should show Swagger UI)
+- Verify frontend is at `http://localhost:3000`
+
+### Available API Endpoints
+
+After backend is running, test these endpoints:
+
+- **`POST /analyze`** - Analyze a URL for phishing risk
+- **`GET /tokenize`** - Tokenize a URL into components
+- **`GET /docs`** - Interactive API documentation (Swagger UI)
+- **`GET /redoc`** - Alternative API reference (ReDoc)
+
+Visit [http://localhost:8000/docs](http://localhost:8000/docs) to test endpoints directly.
