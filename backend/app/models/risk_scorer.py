@@ -1,17 +1,8 @@
-"""  
-===========================================
-RISK SCORING & CLASSIFICATION SYSTEM
-===========================================
-Combines DFA layer outputs to calculate risk scores and classify URLs
-"""
+"""Risk Scoring & Classification: Combines DFA layer outputs into risk scores and levels"""
 
 from typing import Dict, List, Tuple
 from enum import Enum
 
-
-# ========================================
-# RISK LEVELS
-# ========================================
 
 class RiskLevel(Enum):
     """Risk classification levels"""
@@ -22,89 +13,38 @@ class RiskLevel(Enum):
     CRITICAL = "Critical"
 
 
-# ========================================
-# RISK SCORER
-# ========================================
-
 class RiskScorer:
-    """
-    Weighted risk scoring and classification system.
-    
-    Architecture:
-    - Combines outputs from all 3 DFA layers
-    - Applies layer-level weights (basic < advanced < threat)
-    - Applies check-level weights (more critical checks weight more)
-    - Sums weighted scores from triggered checks
-    - Classifies into risk levels
-    
-    Weighting Strategy:
-    Layer Weights (impact of layer on final score):
-      - Layer 1 (Basic): 1.0x - Basic indicators
-      - Layer 2 (Advanced): 1.5x - Sophisticated attacks
-      - Layer 3 (Threat): 2.0x - Active redirect/chaining
-    
-    Check Weights (individual check severity):
-      - Low (0.3-1.0): Single basic indicators
-      - Medium (1.0-1.5): Advanced patterns
-      - High (1.5-2.0): Homographs, chaining, encoding
-    
-    Risk Thresholds (based on total weighted score):
-      - Benign: 0-2 (0-1 check triggered, low weight)
-      - Low: 2-5 (1-2 basic checks or minor advanced)
-      - Medium: 5-8 (mixed layer triggers)
-      - High: 8-12 (multiple advanced/threat triggers)
-      - Critical: 12+ (high-severity threats combined)
-    
-    Example Calculation:
-    URL: https://paypal.com.attacker.tk
-      - Schema check: PASS (https is safe) = 0
-      - TLD check: FAIL (*.tk) = 1.0 * 1.0 = 1.0
-      - Subdomain check: FAIL (brand jacking) = 1.2 * 1.5 = 1.8
-      - Total: 2.8 = Low Risk
-    """
+    """Weighted risk scoring and classification system"""
     
     def __init__(self):
-        # Layer weights (higher = more important)
         self.layer_weights = {
             "Layer 1 (Basic)": 1.0,
             "Layer 2 (Advanced)": 1.5,
             "Layer 3 (Threat)": 2.0
         }
         
-        # Individual check weights
         self.check_weights = {
-            # Layer 1
             "length": 0.3,
             "schema": 0.8,
             "tld": 1.0,
-            # Layer 2
             "homograph": 2.0,
             "subdomain": 1.2,
             "punycode": 1.8,
-            # Layer 3
             "chained": 1.5,
             "dynamic": 1.0,
             "redirect": 1.3
         }
         
-        # Classification thresholds
         self.risk_thresholds = {
             RiskLevel.BENIGN: 0.0,
-            RiskLevel.LOW: 2.0,
-            RiskLevel.MEDIUM: 5.0,
-            RiskLevel.HIGH: 8.0,
-            RiskLevel.CRITICAL: 12.0
+            RiskLevel.LOW: 0.5,
+            RiskLevel.MEDIUM: 2.0,
+            RiskLevel.HIGH: 4.0,
+            RiskLevel.CRITICAL: 6.0
         }
     
-    # ----------------------------------------
-    # Score Calculation
-    # ----------------------------------------
-    
     def calculate_score(self, layer_results: List[Dict]) -> Tuple[float, Dict]:
-        """
-        Calculate weighted risk score from all layers
-        Returns: (total_score, detailed_breakdown)
-        """
+        """Calculate weighted risk score from all layers"""
         total_score = 0.0
         breakdown = {"layer_scores": {}, "check_details": []}
         
@@ -134,22 +74,12 @@ class RiskScorer:
         
         return total_score, breakdown
     
-    # ----------------------------------------
-    # Classification
-    # ----------------------------------------
-    
     def classify(self, score: float) -> RiskLevel:
         """Classify risk level based on score"""
-        # Check thresholds (highest first)
         for risk_level in [RiskLevel.CRITICAL, RiskLevel.HIGH, RiskLevel.MEDIUM, RiskLevel.LOW]:
             if score >= self.risk_thresholds[risk_level]:
                 return risk_level
-        
         return RiskLevel.BENIGN
-    
-    # ----------------------------------------
-    # Utility Methods
-    # ----------------------------------------
     
     def get_risk_color(self, risk_level: RiskLevel) -> str:
         """Get UI color code for risk level"""
@@ -161,10 +91,6 @@ class RiskScorer:
             RiskLevel.CRITICAL: "#991b1b"
         }
         return color_map.get(risk_level, "#6b7280")
-    
-    # ----------------------------------------
-    # Complete Analysis
-    # ----------------------------------------
     
     def analyze(self, layer_results: List[Dict]) -> Dict:
         """Complete risk analysis with score, classification, and breakdown"""
@@ -179,4 +105,3 @@ class RiskScorer:
             "total_checks_triggered": sum(layer.get("triggered_count", 0) for layer in layer_results),
             "total_checks": sum(layer.get("total_checks", 0) for layer in layer_results)
         }
-

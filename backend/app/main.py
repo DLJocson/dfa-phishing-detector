@@ -1,9 +1,4 @@
-"""  
-===========================================
-FASTAPI MAIN APPLICATION
-===========================================
-Provides REST API endpoints for phishing URL detection
-"""
+"""FastAPI Main Application: REST API endpoints for phishing URL detection"""
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,10 +12,6 @@ from .logic.layer3 import Layer3
 from .models.risk_scorer import RiskScorer
 
 
-# ========================================
-# APP INITIALIZATION
-# ========================================
-
 app = FastAPI(
     title="Hierarchical DFA-Based Phishing URL Detector",
     description="A multi-layer DFA system for detecting and classifying phishing URLs",
@@ -29,27 +20,20 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with frontend URL in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ========================================
-# DFA COMPONENTS
-# ========================================
-
+# Initialize DFA components
 tokenizer = TokenizerDFA()
 layer1 = Layer1()
 layer2 = Layer2()
 layer3 = Layer3()
 risk_scorer = RiskScorer()
 
-
-# ========================================
-# REQUEST/RESPONSE MODELS
-# ========================================
 
 class URLRequest(BaseModel):
     """Request model for URL analysis"""
@@ -64,11 +48,6 @@ class URLResponse(BaseModel):
     layers: List[Dict]
     risk_analysis: Dict
     summary: Dict
-
-
-# ========================================
-# API ENDPOINTS
-# ========================================
 
 
 @app.get("/")
@@ -92,30 +71,23 @@ async def health():
 
 @app.post("/analyze", response_model=URLResponse)
 async def analyze_url(request: URLRequest):
-    """
-    Main endpoint: Analyze URL using hierarchical DFA system
-    Returns complete risk assessment with layer details
-    """
+    """Main endpoint: Analyze URL using hierarchical DFA system"""
     try:
         url = request.url.strip()
         
         if not url:
             raise HTTPException(status_code=400, detail="URL cannot be empty")
         
-        # Tokenize
         tokens = tokenizer.tokenize(url)
         hostname_components = tokenizer.get_hostname_components(tokens["hostname"])
         
-        # Run DFA layers
         layer1_result = layer1.analyze(url)
         layer2_result = layer2.analyze(url)
         layer3_result = layer3.analyze(url)
         all_layers = [layer1_result, layer2_result, layer3_result]
         
-        # Calculate risk
         risk_analysis = risk_scorer.analyze(all_layers)
         
-        # Create summary
         summary = {
             "risk_level": risk_analysis["risk_level"],
             "risk_score": risk_analysis["risk_score"],
@@ -153,11 +125,6 @@ async def tokenize_url(url: str):
         raise HTTPException(status_code=500, detail=f"Error tokenizing URL: {str(e)}")
 
 
-# ========================================
-# SERVER STARTUP
-# ========================================
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
-

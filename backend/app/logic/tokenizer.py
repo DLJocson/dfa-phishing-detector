@@ -1,18 +1,8 @@
-"""
-===========================================
-TOKENIZER DFA
-===========================================
-Parses URLs into fundamental components using DFA state machine
-Components: Schema (protocol), Hostname, Path, Query
-"""
+"""Tokenizer DFA: Parses URLs into components (Schema, Hostname, Path, Query)"""
 
 from typing import Dict
 from enum import Enum
 
-
-# ========================================
-# TOKEN TYPES
-# ========================================
 
 class TokenType(Enum):
     """URL token categories"""
@@ -22,15 +12,8 @@ class TokenType(Enum):
     QUERY = "query"
 
 
-# ========================================
-# TOKENIZER DFA
-# ========================================
-
 class TokenizerDFA:
-    """
-    DFA for URL tokenization
-    States: INIT -> SCHEMA -> AFTER_SCHEMA -> HOSTNAME -> PATH -> QUERY
-    """
+    """DFA for URL tokenization"""
     
     def __init__(self):
         self.reset()
@@ -46,10 +29,6 @@ class TokenizerDFA:
             TokenType.QUERY: ""
         }
     
-    # ----------------------------------------
-    # Preprocessing
-    # ----------------------------------------
-    
     def preprocess(self, url: str) -> str:
         """Normalize and decode URL"""
         url = url.strip().lower()
@@ -60,28 +39,15 @@ class TokenizerDFA:
             pass
         return url
     
-    # ----------------------------------------
-    # Main Tokenization Algorithm
-    # ----------------------------------------
-    
     def tokenize(self, url: str) -> Dict[str, str]:
-        """
-        Process URL through DFA states
-        
-        Args:
-            url: URL string to parse
-        Returns:
-            Dict with schema, hostname, path, query tokens
-        """
+        """Process URL through DFA states"""
         self.reset()
         cleaned_url = self.preprocess(url)
         
-        # DFA state machine loop
         i = 0
         while i < len(cleaned_url):
             char = cleaned_url[i]
             
-            # State: INIT (start)
             if self.state == "INIT":
                 if char.isalnum() or char in ['+', '-', '.']:
                     self.state = "SCHEMA"
@@ -90,7 +56,6 @@ class TokenizerDFA:
                     i += 1
                     continue
             
-            # State: SCHEMA (parsing protocol)
             elif self.state == "SCHEMA":
                 if char == ':':
                     if cleaned_url[i+1:i+3] == '//':
@@ -108,13 +73,16 @@ class TokenizerDFA:
                     self.current_token = char
                     continue
             
-            # State: AFTER_SCHEMA (between :// and hostname)
             elif self.state == "AFTER_SCHEMA":
-                self.state = "HOSTNAME"
-                self.current_token = char
-                continue
+                # Skip the first '/' and move to HOSTNAME state
+                if char == '/':
+                    # Skip this '/', the hostname starts at the next character
+                    i += 1
+                    continue
+                else:
+                    self.state = "HOSTNAME"
+                    self.current_token = char
             
-            # State: HOSTNAME (parsing domain)
             elif self.state == "HOSTNAME":
                 if char == '/':
                     self.tokens[TokenType.HOSTNAME] = self.current_token
@@ -130,7 +98,6 @@ class TokenizerDFA:
                 else:
                     self.current_token += char
             
-            # State: PATH (parsing path)
             elif self.state == "PATH":
                 if char == '?':
                     self.tokens[TokenType.PATH] = self.current_token
@@ -142,7 +109,6 @@ class TokenizerDFA:
                 else:
                     self.current_token += char
             
-            # State: QUERY (parsing query string)
             elif self.state == "QUERY":
                 if char == '#':
                     self.tokens[TokenType.QUERY] = self.current_token
@@ -152,7 +118,6 @@ class TokenizerDFA:
             
             i += 1
         
-        # Finalize remaining token
         if self.state == "SCHEMA" and self.current_token:
             self.tokens[TokenType.HOSTNAME] = self.current_token
         elif self.state == "HOSTNAME" and self.current_token:
@@ -169,19 +134,8 @@ class TokenizerDFA:
             "query": self.tokens[TokenType.QUERY]
         }
     
-    # ----------------------------------------
-    # Hostname Component Extraction
-    # ----------------------------------------
-    
     def get_hostname_components(self, hostname: str) -> Dict[str, str]:
-        """
-        Parse hostname into subdomain, domain, and TLD
-        
-        Args:
-            hostname: Hostname to parse
-        Returns:
-            Dict with subdomain, domain, tld
-        """
+        """Parse hostname into subdomain, domain, and TLD"""
         if not hostname:
             return {"subdomain": "", "domain": "", "tld": ""}
         
@@ -197,4 +151,3 @@ class TokenizerDFA:
                 "domain": parts[-2],
                 "tld": parts[-1]
             }
-

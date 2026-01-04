@@ -35,3 +35,12 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Debug and temporary files
+debug_*.py
+temp_*.py
+test_*.log
+
+# Environment variables
+.env
+.env.local
+

@@ -1,9 +1,7 @@
 /**
- * ============================================
- * MAIN APPLICATION COMPONENT
- * ============================================
- * React application for phishing URL detection
- * Manages state and API communication
+ * Main Application: React app for phishing URL detection
+ * - State management for analysis results
+ * - API communication with backend
  */
 
 import React, { useState } from 'react';
@@ -15,20 +13,11 @@ import DFAVisualization from './visualization/DFAVisualization';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 
-// ============================================
-// MAIN APP COMPONENT
-// ============================================
-
 function App() {
-  // State management
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ----------------------------------------
-  // API Handler
-  // ----------------------------------------
-  
   const handleAnalyze = async (url) => {
     setIsLoading(true);
     setError(null);
@@ -58,10 +47,6 @@ function App() {
     }
   };
 
-  // ----------------------------------------
-  // Render
-  // ----------------------------------------
-  
   return (
     <div className="App">
       <header className="app-header">
@@ -131,4 +116,3 @@ function App() {
 }
 
 export default App;
-

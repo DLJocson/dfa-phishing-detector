@@ -1,17 +1,10 @@
 /**
- * ============================================
- * DFA VISUALIZATION COMPONENT
- * ============================================
- * Visual representation of DFA state transitions
+ * DFA Visualization Component: Visual representation of DFA state transitions
  */
 
 import React from 'react';
 import './DFAVisualization.css';
 
-
-// ============================================
-// DFA VISUALIZATION COMPONENT
-// ============================================
 
 const DFAVisualization = ({ analysis }) => {
   if (!analysis || !analysis.layers) {
@@ -20,10 +13,6 @@ const DFAVisualization = ({ analysis }) => {
 
   const { layers } = analysis;
 
-  // ----------------------------------------
-  // Layer State Renderer
-  // ----------------------------------------
-  
   const renderLayerStates = (layer, layerIndex) => {
     const checks = Object.entries(layer.checks || {});
     const triggeredChecks = checks.filter(([_, check]) => check.triggered);
@@ -67,10 +56,6 @@ const DFAVisualization = ({ analysis }) => {
     );
   };
 
-  // ----------------------------------------
-  // Render
-  // ----------------------------------------
-  
   return (
     <div className="dfa-visualization-container">
       <h3 className="viz-title">DFA State Transitions</h3>
@@ -93,4 +78,3 @@ const DFAVisualization = ({ analysis }) => {
 };
 
 export default DFAVisualization;
-

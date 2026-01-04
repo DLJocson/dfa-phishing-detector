@@ -1,25 +1,14 @@
 /**
- * ============================================
- * INPUT BAR COMPONENT
- * ============================================
- * URL input form with example URLs for testing
+ * Input Bar Component: URL input form with example URLs for testing
  */
 
 import React, { useState } from 'react';
 import './InputBar.css';
 
 
-// ============================================
-// INPUT BAR COMPONENT
-// ============================================
-
 const InputBar = ({ onAnalyze, isLoading }) => {
   const [url, setUrl] = useState('');
 
-  // ----------------------------------------
-  // Event Handlers
-  // ----------------------------------------
-  
   const handleSubmit = (e) => {
     e.preventDefault();
     if (url.trim()) {
@@ -32,10 +21,6 @@ const InputBar = ({ onAnalyze, isLoading }) => {
     onAnalyze(exampleUrl);
   };
 
-  // ----------------------------------------
-  // Example URLs
-  // ----------------------------------------
-  
   const exampleUrls = {
     suspicious: [
       'http://paypal-secure-verify.com/login',
@@ -108,4 +93,3 @@ const InputBar = ({ onAnalyze, isLoading }) => {
 };
 
 export default InputBar;
-

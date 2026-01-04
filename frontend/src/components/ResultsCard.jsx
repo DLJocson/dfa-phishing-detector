@@ -1,17 +1,10 @@
 /**
- * ============================================
- * RESULTS CARD COMPONENT
- * ============================================
- * Displays analysis results, risk assessment, and layer details
+ * Results Card Component: Displays analysis results, risk assessment, and layer details
  */
 
 import React from 'react';
 import './ResultsCard.css';
 
-
-// ============================================
-// RESULTS CARD COMPONENT
-// ============================================
 
 const ResultsCard = ({ analysis }) => {
   if (!analysis) {
@@ -23,10 +16,6 @@ const ResultsCard = ({ analysis }) => {
   const riskScore = summary?.risk_score || 0;
   const riskColor = risk_analysis?.risk_color || '#6b7280';
 
-  // ----------------------------------------
-  // Helper Functions
-  // ----------------------------------------
-  
   const getCheckIcon = (triggered) => {
     return triggered ? (
       <span className="check-icon triggered">⚠️</span>
@@ -35,13 +24,9 @@ const ResultsCard = ({ analysis }) => {
     );
   };
 
-  // ----------------------------------------
-  // Render
-  // ----------------------------------------
-  
   return (
     <div className="results-container">
-      {/* Risk Summary Card */}
+      {/* Risk Summary */}
       <div className="risk-summary-card" style={{ borderLeftColor: riskColor }}>
         <div className="risk-header">
           <h2 className="risk-title">Risk Assessment</h2>
@@ -67,7 +52,7 @@ const ResultsCard = ({ analysis }) => {
         </div>
       </div>
 
-      {/* URL Tokens */}
+      {/* URL Components */}
       <div className="tokens-card">
         <h3 className="card-title">URL Components</h3>
         <div className="tokens-grid">
@@ -102,7 +87,7 @@ const ResultsCard = ({ analysis }) => {
         </div>
       </div>
 
-      {/* Layer Results */}
+      {/* Layer Analysis */}
       <div className="layers-container">
         <h3 className="card-title">DFA Layer Analysis</h3>
         {layers?.map((layer, layerIndex) => (
@@ -133,7 +118,7 @@ const ResultsCard = ({ analysis }) => {
         ))}
       </div>
 
-      {/* Detailed Breakdown */}
+      {/* Score Breakdown */}
       {risk_analysis?.breakdown?.check_details?.length > 0 && (
         <div className="breakdown-card">
           <h3 className="card-title">Detailed Score Breakdown</h3>
@@ -155,4 +140,3 @@ const ResultsCard = ({ analysis }) => {
 };
 
 export default ResultsCard;
-
