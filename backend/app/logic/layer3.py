@@ -162,47 +162,143 @@ class ChainedDFA:
 
 
 class DynamicDFA:
-    """DFA for dynamic DNS pattern detection (excessive params, high digit ratio)"""
+    """
+    Pure DFA for dynamic DNS/suspicious pattern detection.
+    Uses ONLY state transitions with NO auxiliary variables (param_count, digit_count, etc).
     
-    START = "START"
-    ANALYZING_HOSTNAME = "ANALYZING_HOSTNAME"
-    COUNTING_PARAMS = "COUNTING_PARAMS"
+    Features:
+    1. Params: States Count0, Count1, Count2, Count3, Count4, Count5, CountExcessive
+       - Track & symbols encountered (parameter count)
+    2. Digit Sequence: States D0 (none), D1, D2, D3, D4, D5Plus
+       - Track consecutive digit sequences (detect 5+ digits in a row)
+    """
+    
+    # States for parameter counting
+    COUNT_0 = "COUNT_0"
+    COUNT_1 = "COUNT_1"
+    COUNT_2 = "COUNT_2"
+    COUNT_3 = "COUNT_3"
+    COUNT_4 = "COUNT_4"
+    COUNT_5 = "COUNT_5"
+    COUNT_EXCESSIVE = "COUNT_EXCESSIVE"
+    
+    # States for consecutive digit detection
+    DIGIT_0 = "DIGIT_0"      # No consecutive digits
+    DIGIT_1 = "DIGIT_1"      # 1 consecutive digit
+    DIGIT_2 = "DIGIT_2"      # 2 consecutive digits
+    DIGIT_3 = "DIGIT_3"      # 3 consecutive digits
+    DIGIT_4 = "DIGIT_4"      # 4 consecutive digits
+    DIGIT_5_PLUS = "DIGIT_5_PLUS"  # 5+ consecutive digits detected
+    
+    # Terminal states
     ACCEPT = "ACCEPT"
     REJECT = "REJECT"
     
-    def __init__(self, max_query_params: int = 5, max_digit_ratio: float = 0.4):
-        self.max_query_params = max_query_params
-        self.max_digit_ratio = max_digit_ratio
-        
-        self._transition_table = {
-            (self.START, "digit"): self.ANALYZING_HOSTNAME,
-            (self.START, "alpha"): self.ANALYZING_HOSTNAME,
-            (self.START, "other"): self.ANALYZING_HOSTNAME,
-            (self.ANALYZING_HOSTNAME, "digit"): self.ANALYZING_HOSTNAME,
-            (self.ANALYZING_HOSTNAME, "alpha"): self.ANALYZING_HOSTNAME,
-            (self.ANALYZING_HOSTNAME, "other"): self.ANALYZING_HOSTNAME,
+    def __init__(self, max_params: int = 5):
+        """Initialize pure DFA with state-based counting"""
+        self.max_params = max_params
+        self._build_transition_tables()
+    
+    def _build_transition_tables(self):
+        """
+        Build TWO separate DFAs:
+        1. _param_transitions: Tracks & count (parameter count)
+        2. _digit_transitions: Tracks consecutive digit sequences
+        """
+        # ===== PARAMETER COUNTING DFA =====
+        # States: COUNT_0, COUNT_1, ..., COUNT_5, COUNT_EXCESSIVE
+        self._param_transitions = {
+            self.COUNT_0: {
+                "&": self.COUNT_1,
+                "other": self.COUNT_0,
+            },
+            self.COUNT_1: {
+                "&": self.COUNT_2,
+                "other": self.COUNT_1,
+            },
+            self.COUNT_2: {
+                "&": self.COUNT_3,
+                "other": self.COUNT_2,
+            },
+            self.COUNT_3: {
+                "&": self.COUNT_4,
+                "other": self.COUNT_3,
+            },
+            self.COUNT_4: {
+                "&": self.COUNT_5,
+                "other": self.COUNT_4,
+            },
+            self.COUNT_5: {
+                "&": self.COUNT_EXCESSIVE,  # Transition to EXCESSIVE on 6th &
+                "other": self.COUNT_5,
+            },
+            self.COUNT_EXCESSIVE: {
+                "&": self.COUNT_EXCESSIVE,
+                "other": self.COUNT_EXCESSIVE,
+            },
         }
         
-        self._accepting_states = {self.ACCEPT}
+        # ===== CONSECUTIVE DIGIT DETECTION DFA =====
+        # Tracks sequences of consecutive digits
+        self._digit_transitions = {
+            self.DIGIT_0: {
+                "digit": self.DIGIT_1,
+                "other": self.DIGIT_0,
+            },
+            self.DIGIT_1: {
+                "digit": self.DIGIT_2,
+                "other": self.DIGIT_0,
+            },
+            self.DIGIT_2: {
+                "digit": self.DIGIT_3,
+                "other": self.DIGIT_0,
+            },
+            self.DIGIT_3: {
+                "digit": self.DIGIT_4,
+                "other": self.DIGIT_0,
+            },
+            self.DIGIT_4: {
+                "digit": self.DIGIT_5_PLUS,
+                "other": self.DIGIT_0,
+            },
+            self.DIGIT_5_PLUS: {
+                "digit": self.DIGIT_5_PLUS,  # Stay in 5+ state
+                "other": self.DIGIT_0,
+            },
+        }
     
-    def _classify_char(self, char: str) -> str:
-        """Classify character type"""
-        if char.isdigit():
-            return "digit"
-        elif char.isalpha():
-            return "alpha"
-        elif char == "&":
-            return "ampersand"
+    def _classify_char_param(self, char: str) -> str:
+        """Classify character for parameter counting DFA"""
+        if char == "&":
+            return "&"
         else:
             return "other"
     
-    def _transition(self, state: str, char_type: str) -> str:
-        """Transition function δ(q, σ) → q'"""
-        key = (state, char_type)
-        return self._transition_table.get(key, self.REJECT)
+    def _classify_char_digit(self, char: str) -> str:
+        """Classify character for digit sequence DFA"""
+        if char.isdigit():
+            return "digit"
+        else:
+            return "other"
+    
+    def _transition_param(self, state: str, char_type: str) -> str:
+        """Pure state transition for parameter counting"""
+        if state in self._param_transitions:
+            return self._param_transitions[state].get(char_type, state)
+        return self.REJECT
+    
+    def _transition_digit(self, state: str, char_type: str) -> str:
+        """Pure state transition for digit sequence detection"""
+        if state in self._digit_transitions:
+            return self._digit_transitions[state].get(char_type, state)
+        return self.REJECT
     
     def check(self, hostname: str, query: str) -> Dict:
-        """Execute DFA and return risk assessment"""
+        """
+        Execute TWO independent pure DFAs:
+        1. Parameter counter (via & symbols in query)
+        2. Digit sequence detector (via consecutive digits in hostname + query)
+        """
         if not hostname and not query:
             return {
                 "triggered": False,
@@ -211,62 +307,63 @@ class DynamicDFA:
                 "details": None
             }
         
+        # ===== RUN PARAMETER COUNTING DFA =====
+        param_state = self.COUNT_0
+        if query:
+            for char in query:
+                char_type = self._classify_char_param(char)
+                param_state = self._transition_param(param_state, char_type)
+        
+        # ===== RUN DIGIT SEQUENCE DETECTION DFA =====
+        digit_state = self.DIGIT_0
+        text_to_check = (hostname or "") + (query or "")
+        if text_to_check:
+            for char in text_to_check:
+                char_type = self._classify_char_digit(char)
+                digit_state = self._transition_digit(digit_state, char_type)
+        
+        # ===== DETERMINE RISK BASED ON FINAL STATES =====
         issues = []
         triggered = False
         
-        param_count = 0
-        if query:
-            state = self.START
-            i = 0
-            param_count = 1
-            
-            while i < len(query):
-                char = query[i]
-                char_type = self._classify_char(char)
-                state = self._transition(state, char_type)
-                if char == "&":
-                    param_count += 1
-                i += 1
-            
-            if param_count > self.max_query_params:
-                issues.append(f"Excessive query parameters ({param_count} > {self.max_query_params})")
-                triggered = True
+        # Check parameter count
+        if param_state == self.COUNT_EXCESSIVE:
+            issues.append(f"Excessive query parameters (>5 ampersands detected)")
+            triggered = True
         
-        digit_ratio = 0.0
-        if hostname:
-            state = self.START
-            digit_count = 0
-            alpha_count = 0
-            i = 0
-            
-            while i < len(hostname):
-                char = hostname[i]
-                char_type = self._classify_char(char)
-                state = self._transition(state, char_type)
-                
-                if char_type == "digit":
-                    digit_count += 1
-                elif char_type == "alpha":
-                    alpha_count += 1
-                i += 1
-            
-            total_alnum = digit_count + alpha_count
-            if total_alnum > 0:
-                digit_ratio = digit_count / total_alnum
-                
-                if digit_ratio > self.max_digit_ratio:
-                    issues.append(f"High digit ratio in hostname ({digit_ratio:.1%} > {self.max_digit_ratio:.0%})")
-                    triggered = True
+        # Check digit sequence
+        if digit_state == self.DIGIT_5_PLUS:
+            issues.append(f"High concentration of consecutive digits (5+ detected)")
+            triggered = True
         
-        final_state = self.ACCEPT if triggered else self.REJECT
+        # Map state to description
+        param_count_desc = {
+            self.COUNT_0: "0 parameters",
+            self.COUNT_1: "1 parameter",
+            self.COUNT_2: "2 parameters",
+            self.COUNT_3: "3 parameters",
+            self.COUNT_4: "4 parameters",
+            self.COUNT_5: "5 parameters",
+            self.COUNT_EXCESSIVE: "6+ parameters (excessive)",
+        }.get(param_state, "unknown")
         
-        # Generate reason/explanation
+        digit_count_desc = {
+            self.DIGIT_0: "none",
+            self.DIGIT_1: "1",
+            self.DIGIT_2: "2",
+            self.DIGIT_3: "3",
+            self.DIGIT_4: "4",
+            self.DIGIT_5_PLUS: "5+",
+        }.get(digit_state, "unknown")
+        
+        final_state = self.ACCEPT if not triggered else self.REJECT
+        
         reason = ""
         if triggered:
             if issues:
                 reason = "; ".join(issues)
             else:
-                reason = "Dynamic DNS patterns or excessive query parameters detected"
+                reason = "Dynamic DNS patterns or excessive parameters detected"
         else:
             reason = "No dynamic DNS patterns or excessive parameters detected"
         
@@ -277,73 +374,146 @@ class DynamicDFA:
             "reason": reason,
             "details": {
                 "hostname": hostname,
-                "query_param_count": param_count,
-                "digit_ratio": f"{digit_ratio:.1%}",
+                "query": query,
+                "param_state": param_state,
+                "param_count_description": param_count_desc,
+                "digit_state": digit_state,
+                "consecutive_digits_detected": digit_count_desc,
                 "issues": "; ".join(issues),
                 "warning": "Dynamic DNS pattern or excessive parameters detected"
             } if triggered else {
                 "hostname": hostname,
-                "query_param_count": param_count,
-                "digit_ratio": f"{digit_ratio:.1%}"
+                "query": query,
+                "param_state": param_state,
+                "param_count_description": param_count_desc,
+                "digit_state": digit_state,
+                "consecutive_digits_detected": digit_count_desc,
             }
         }
 
 
 class RedirectDFA:
-    """DFA for redirect parameter detection (url=, redirect=, next=, etc.)"""
+    """
+    Pure DFA for redirect parameter detection using explicit Trie states.
+    Detects redirect keywords: url=, redirect=, next=, etc.
+    Uses ONLY state transitions with NO string buffering or external variables.
+    
+    States represent positions in the keyword matching tree:
+    - Each keyword is hardcoded as a sequence of states
+    - When we see '=' after matching a keyword, we transition to FOUND_REDIRECT_PARAM
+    """
     
     START = "START"
-    READING_PARAM_NAME = "READING_PARAM_NAME"
-    FOUND_EQUALS = "FOUND_EQUALS"
     FOUND_REDIRECT_PARAM = "FOUND_REDIRECT_PARAM"
     ACCEPT = "ACCEPT"
     REJECT = "REJECT"
     
     def __init__(self):
-        self.redirect_params = {
+        """Initialize DFA with explicit keyword matching states"""
+        self.redirect_keywords = [
             "url", "redirect", "redirecturl", "redirecturi",
             "next", "goto", "link", "target", "destination",
             "return", "returnurl", "returnuri",
             "continue", "continueurl", "forward", "forwardurl",
             "redir", "rurl", "dest", "out", "to"
-        }
+        ]
         
-        self._transition_table = {
-            (self.START, "alpha"): self.READING_PARAM_NAME,
-            (self.START, "other"): self.START,
-            (self.READING_PARAM_NAME, "alpha"): self.READING_PARAM_NAME,
-            (self.READING_PARAM_NAME, "equals"): self.FOUND_EQUALS,
-            (self.READING_PARAM_NAME, "ampersand"): self.START,
-            (self.READING_PARAM_NAME, "other"): self.READING_PARAM_NAME,
-            (self.FOUND_EQUALS, "alpha"): self.FOUND_EQUALS,
-            (self.FOUND_EQUALS, "ampersand"): self.START,
-            (self.FOUND_EQUALS, "other"): self.FOUND_EQUALS,
-            (self.FOUND_REDIRECT_PARAM, "alpha"): self.FOUND_REDIRECT_PARAM,
-            (self.FOUND_REDIRECT_PARAM, "equals"): self.FOUND_REDIRECT_PARAM,
-            (self.FOUND_REDIRECT_PARAM, "ampersand"): self.FOUND_REDIRECT_PARAM,
-            (self.FOUND_REDIRECT_PARAM, "other"): self.FOUND_REDIRECT_PARAM,
-        }
+        self._build_transition_table()
+    
+    def _build_transition_table(self):
+        """
+        Build transition table by building a shared trie for all keywords.
+        Handles overlapping prefixes correctly (e.g., "redir", "redirect", "redirecturl").
         
-        self._accepting_states = {self.FOUND_REDIRECT_PARAM}
+        This is a pure table-driven approach where states represent positions in the trie.
+        """
+        self._transitions = {}
+        self._keyword_targets = {}  # Maps state to keyword
+        
+        # Build a trie with shared prefix paths
+        trie = {}
+        current_state = self.START
+        
+        # Insert all keywords into trie
+        for keyword in self.redirect_keywords:
+            keyword_lower = keyword.lower()
+            current_node = trie
+            
+            # Navigate/build the trie
+            for i, char in enumerate(keyword_lower):
+                if char not in current_node:
+                    current_node[char] = {}
+                current_node = current_node[char]
+            
+            # Mark end of keyword with a special key
+            current_node['$END'] = keyword
+        
+        # Now convert trie to DFA states
+        def trie_to_dfa(node, state_prefix):
+            """Recursively convert trie node to DFA states"""
+            state_id = state_prefix
+            
+            # Initialize transitions for this state
+            if state_id not in self._transitions:
+                self._transitions[state_id] = {}
+            
+            # If this node marks end of a keyword, record it
+            if '$END' in node:
+                self._keyword_targets[state_id] = node['$END']
+            
+            # Add transitions for each character
+            for char, next_node in node.items():
+                if char != '$END':
+                    next_state_id = f"{state_prefix}/{char}"
+                    self._transitions[state_id][char] = next_state_id
+                    # Recursively process next node
+                    trie_to_dfa(next_node, next_state_id)
+        
+        # Build DFA from trie starting at START state
+        trie_to_dfa(trie, self.START)
+        
+        # Add '=' transitions from all keyword end states to FOUND_REDIRECT_PARAM
+        for kw_end_state in list(self._keyword_targets.keys()):
+            if kw_end_state not in self._transitions:
+                self._transitions[kw_end_state] = {}
+            self._transitions[kw_end_state]["="] = self.FOUND_REDIRECT_PARAM
+        
+        # Add fallback transitions for all states
+        for state in list(self._transitions.keys()):
+            # '&' always resets to START
+            if "&" not in self._transitions[state]:
+                self._transitions[state]["&"] = self.START
+        
+        # FOUND_REDIRECT_PARAM transitions
+        self._transitions[self.FOUND_REDIRECT_PARAM] = {
+            "&": self.START,
+        }
     
-    def _classify_char(self, char: str) -> str:
-        """Classify character type"""
-        if char.isalpha():
-            return "alpha"
-        elif char == "=":
-            return "equals"
-        elif char == "&":
-            return "ampersand"
-        else:
-            return "other"
-    
-    def _transition(self, state: str, char_type: str) -> str:
-        """Transition function δ(q, σ) → q'"""
-        key = (state, char_type)
-        return self._transition_table.get(key, self.REJECT)
+    def _transition(self, state: str, char: str) -> str:
+        """Pure state transition function δ(q, σ) → q'"""
+        if state not in self._transitions:
+            return self.REJECT
+        
+        char_lower = char.lower()
+        
+        # Try exact character match first
+        if char_lower in self._transitions[state]:
+            return self._transitions[state][char_lower]
+        
+        # Check for ampersand (parameter boundary)
+        if char == "&" and "&" in self._transitions[state]:
+            return self._transitions[state]["&"]
+        
+        # If we're in the middle of matching a keyword but hit an unexpected character,
+        # reset to START (unless it's a special transition we already handled)
+        # This ensures we don't get stuck in partial match states
+        return self.START
     
     def check(self, query: str) -> Dict:
-        """Execute DFA and return risk assessment"""
+        """
+        Execute pure DFA check - only state transitions, NO string buffering.
+        Follows: state = transitions[state][char] strictly.
+        """
         if not query:
             return {
                 "triggered": False,
@@ -353,31 +523,27 @@ class RedirectDFA:
             }
         
         state = self.START
-        current_param_name = ""
         found_redirect_params = []
-        i = 0
+        in_keyword = False
+        last_keyword = None
         
-        while i < len(query):
-            char = query[i]
-            char_type = self._classify_char(char)
+        # Pure DFA loop: ONLY state transitions
+        for char in query:
             prev_state = state
-            state = self._transition(state, char_type)
+            state = self._transition(state, char)
             
-            if state == self.READING_PARAM_NAME:
-                if char_type == "alpha":
-                    current_param_name += char.lower()
-            elif prev_state == self.READING_PARAM_NAME and char_type == "equals":
-                if current_param_name in self.redirect_params:
-                    found_redirect_params.append(current_param_name)
-                    state = self.FOUND_REDIRECT_PARAM
-                current_param_name = ""
-            elif char_type == "ampersand":
-                current_param_name = ""
-            i += 1
-        
-        if current_param_name and current_param_name in self.redirect_params:
-            found_redirect_params.append(current_param_name)
-            state = self.FOUND_REDIRECT_PARAM
+            # Check if we just found a redirect parameter
+            if state == self.FOUND_REDIRECT_PARAM and prev_state != self.FOUND_REDIRECT_PARAM:
+                # Look up which keyword matched
+                if prev_state in self._keyword_targets:
+                    keyword = self._keyword_targets[prev_state]
+                    if keyword not in found_redirect_params:
+                        found_redirect_params.append(keyword)
+            
+            # Reset when hitting ampersand
+            if char == "&":
+                in_keyword = False
+                last_keyword = None
         
         triggered = len(found_redirect_params) > 0
         
@@ -390,7 +556,7 @@ class RedirectDFA:
         
         return {
             "triggered": triggered,
-            "state": self.FOUND_REDIRECT_PARAM if triggered else self.ACCEPT,
+            "state": state,
             "risk_score": 1.8 if triggered else 0.0,
             "reason": reason,
             "details": {

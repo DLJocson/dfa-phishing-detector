@@ -54,110 +54,137 @@ class LengthDFA:
 
 
 class SchemaDFA:
-    """DFA for protocol/schema validation (detects suspicious protocols)"""
+    """Table-Driven DFA for protocol/schema validation using pure state transitions"""
     
-    def __init__(self):
+    def __init__(self, debug=False):
         self.risk_score = 0.8
-        self.START = "START"
-        self.READING_SCHEMA = "READING_SCHEMA"
-        self.COLON = "COLON"
-        self.SLASH1 = "SLASH1"
-        self.SLASH2 = "SLASH2"
-        self.VALIDATE = "VALIDATE"
-        self.ACCEPT = "ACCEPT"
+        self.debug = debug
+        
+        # Define states - each character in target schemas gets its own state
+        self.Q0_START = "Q0_START"
+        
+        # States for "http" path
+        self.Q1_H = "Q1_H"
+        self.Q2_HT = "Q2_HT"
+        self.Q3_HTT = "Q3_HTT"
+        self.Q4_HTTP = "Q4_HTTP"
+        
+        # States for "https" path (branches from Q4_HTTP)
+        self.Q5_HTTPS = "Q5_HTTPS"
+        
+        # States for "data" path
+        self.Q6_D = "Q6_D"
+        self.Q7_DA = "Q7_DA"
+        self.Q8_DAT = "Q8_DAT"
+        self.Q9_DATA = "Q9_DATA"
+        
+        # States for "file" path
+        self.Q10_F = "Q10_F"
+        self.Q11_FI = "Q11_FI"
+        self.Q12_FIL = "Q12_FIL"
+        self.Q13_FILE = "Q13_FILE"
+        
+        # Final states
+        self.SAFE_HTTP = "SAFE_HTTP"
+        self.SAFE_HTTPS = "SAFE_HTTPS"
+        self.MALICIOUS_DATA = "MALICIOUS_DATA"
+        self.MALICIOUS_FILE = "MALICIOUS_FILE"
         self.REJECT = "REJECT"
-        self.initial_state = self.START
-        self.accepting_states = {self.ACCEPT}
         
-        self.standard_schemas = {"http", "https"}
-        self.suspicious_schemas = {
-            "file", "data", "javascript", "vbscript",
-            "ftp", "telnet", "gopher"
-        }
+        self.initial_state = self.Q0_START
+        self.accepting_states = {self.MALICIOUS_DATA, self.MALICIOUS_FILE}
+        self.safe_states = {self.SAFE_HTTP, self.SAFE_HTTPS}
         
-        self.transition_table = {
-            (self.START, 'alpha'): self.READING_SCHEMA,
-            (self.START, 'default'): self.REJECT,
-            (self.READING_SCHEMA, 'alpha'): self.READING_SCHEMA,
-            (self.READING_SCHEMA, ':'): self.COLON,
-            (self.READING_SCHEMA, 'default'): self.REJECT,
-            (self.COLON, '/'): self.SLASH1,
-            (self.COLON, 'default'): self.VALIDATE,
-            (self.SLASH1, '/'): self.SLASH2,
-            (self.SLASH1, 'default'): self.REJECT,
-            (self.SLASH2, 'alpha'): self.VALIDATE,
-            (self.SLASH2, 'default'): self.VALIDATE,
+        # Transition table: δ(state, character) → next_state
+        self.delta = {
+            # From START state
+            (self.Q0_START, 'h'): self.Q1_H,
+            (self.Q0_START, 'd'): self.Q6_D,
+            (self.Q0_START, 'f'): self.Q10_F,
+            
+            # HTTP path: h → t → t → p
+            (self.Q1_H, 't'): self.Q2_HT,
+            (self.Q2_HT, 't'): self.Q3_HTT,
+            (self.Q3_HTT, 'p'): self.Q4_HTTP,
+            (self.Q4_HTTP, 's'): self.Q5_HTTPS,
+            (self.Q4_HTTP, ':'): self.SAFE_HTTP,
+            (self.Q5_HTTPS, ':'): self.SAFE_HTTPS,
+            
+            # DATA path: d → a → t → a
+            (self.Q6_D, 'a'): self.Q7_DA,
+            (self.Q7_DA, 't'): self.Q8_DAT,
+            (self.Q8_DAT, 'a'): self.Q9_DATA,
+            (self.Q9_DATA, ':'): self.MALICIOUS_DATA,
+            
+            # FILE path: f → i → l → e
+            (self.Q10_F, 'i'): self.Q11_FI,
+            (self.Q11_FI, 'l'): self.Q12_FIL,
+            (self.Q12_FIL, 'e'): self.Q13_FILE,
+            (self.Q13_FILE, ':'): self.MALICIOUS_FILE,
         }
-    
-    def _get_char_type(self, char: str) -> str:
-        """Classify character for transition table lookup"""
-        if char.isalpha():
-            return 'alpha'
-        elif char == ':':
-            return ':'
-        elif char == '/':
-            return '/'
-        else:
-            return 'default'
-    
-    def _transition(self, state: str, char: str, schema: str = "") -> Tuple[str, str]:
-        """Transition function δ(q, σ) → q'"""
-        char_type = self._get_char_type(char)
-        next_state = self.transition_table.get(
-            (state, char_type),
-            self.transition_table.get((state, 'default'), self.REJECT)
-        )
-        if char.isalpha() and (state == self.READING_SCHEMA or next_state == self.READING_SCHEMA):
-            schema += char.lower()
-        return next_state, schema
     
     def check(self, schema: str) -> Dict:
-        """Execute DFA and return risk assessment"""
+        """Execute DFA with pure state transitions (no string lookups)"""
         if not schema:
             return {
-                "triggered": True,
+                "triggered": False,
                 "state": self.REJECT,
                 "reason": "URL missing protocol/schema",
                 "value": None,
                 "risk_score": 0.0
             }
         
-        state = self.initial_state
-        collected_schema = ""
-        input_string = schema.lower() + "://"
+        current_state = self.initial_state
+        input_string = schema.lower()
+        detected_schema = ""
         
-        i = 0
-        while i < len(input_string):
-            char = input_string[i]
-            state, collected_schema = self._transition(state, char, collected_schema)
-            i += 1
-            if state in {self.ACCEPT, self.REJECT, self.VALIDATE}:
+        if self.debug:
+            print(f"\n=== SchemaDFA Transition Trace ===")
+            print(f"Input: '{schema}'")
+        
+        # Process each character using transition table
+        for char in input_string:
+            prev_state = current_state
+            current_state = self.delta.get((current_state, char), self.REJECT)
+            detected_schema += char
+            
+            # Visualization for professor
+            if self.debug:
+                print(f"State {prev_state} --({char})--> State {current_state}")
+            
+            if current_state == self.REJECT:
                 break
         
-        if state == self.VALIDATE or state == self.SLASH2 or (state == self.START and collected_schema):
-            if collected_schema in self.suspicious_schemas:
-                state = self.ACCEPT
-                triggered = True
-                reason = f"Suspicious schema detected: {collected_schema}"
-                risk_score = self.risk_score
-            elif collected_schema in self.standard_schemas:
-                state = self.REJECT
-                triggered = False
-                reason = f"Standard safe schema: {collected_schema}"
-                risk_score = 0.0
-            else:
-                state = self.REJECT
-                triggered = False
-                reason = f"Unknown schema: {collected_schema}"
-                risk_score = 0.0
-        else:
-            triggered = state in self.accepting_states
-            reason = f"Schema validation failed - invalid format"
+        # Check for colon to finalize schema
+        if current_state not in {self.REJECT, self.SAFE_HTTP, self.SAFE_HTTPS, 
+                                  self.MALICIOUS_DATA, self.MALICIOUS_FILE}:
+            # Try to transition with ':'
+            prev_state = current_state
+            current_state = self.delta.get((current_state, ':'), self.REJECT)
+            if self.debug:
+                print(f"State {prev_state} --(:)--> State {current_state}")
+        
+        # Determine result based on final state (pure DFA logic)
+        if current_state in self.accepting_states:
+            triggered = True
+            risk_score = self.risk_score
+            reason = f"Malicious schema detected via state path: {detected_schema}"
+        elif current_state in self.safe_states:
+            triggered = False
             risk_score = 0.0
+            reason = f"Safe schema detected via state path: {detected_schema}"
+        else:
+            triggered = False
+            risk_score = 0.0
+            reason = f"Unknown/Invalid schema - rejected at state {current_state}"
+        
+        if self.debug:
+            print(f"Final State: {current_state} | Triggered: {triggered}")
+            print("="*40)
         
         return {
             "triggered": triggered,
-            "state": state,
+            "state": current_state,
             "reason": reason,
             "value": schema,
             "risk_score": risk_score
@@ -165,63 +192,83 @@ class SchemaDFA:
 
 
 class TLDDFA:
-    """DFA for high-risk TLD detection"""
+    """Table-Driven DFA for high-risk TLD detection using pure state transitions"""
     
-    def __init__(self):
+    def __init__(self, debug=False):
         self.risk_score = 1.0
-        self.START = "START"
-        self.COLLECTING_TLD = "COLLECTING_TLD"
-        self.LOOKUP = "LOOKUP"
-        self.ACCEPT = "ACCEPT"
+        self.debug = debug
+        
+        # Define states for each TLD character path
+        self.Q0_START = "Q0_START"
+        
+        # States for ".zip" path
+        self.Q1_Z = "Q1_Z"
+        self.Q2_ZI = "Q2_ZI"
+        self.Q3_ZIP = "Q3_ZIP"
+        
+        # States for ".exe" path
+        self.Q4_E = "Q4_E"
+        self.Q5_EX = "Q5_EX"
+        self.Q6_EXE = "Q6_EXE"
+        
+        # States for ".mov" path
+        self.Q7_M = "Q7_M"
+        self.Q8_MO = "Q8_MO"
+        self.Q9_MOV = "Q9_MOV"
+        
+        # States for ".tk" path
+        self.Q10_T = "Q10_T"
+        self.Q11_TK = "Q11_TK"
+        
+        # States for ".xyz" path
+        self.Q12_X = "Q12_X"
+        self.Q13_XY = "Q13_XY"
+        self.Q14_XYZ = "Q14_XYZ"
+        
+        # Final states
+        self.MALICIOUS = "MALICIOUS"
+        self.SAFE = "SAFE"
         self.REJECT = "REJECT"
-        self.initial_state = self.START
-        self.accepting_states = {self.ACCEPT}
         
-        self.high_risk_tlds = {
-            "zip", "mov", "exe", "bat", "scr", "app", "run",
-            "link", "click", "download", "online", "site", "website",
-            "tk", "ml", "ga", "cf", "gq", "pw",
-            "xyz", "top", "review", "accountant", "bid", "date",
-            "faith", "loan", "men", "party", "racing", "science",
-            "stream", "trade", "win", "work", "ooo"
-        }
+        self.initial_state = self.Q0_START
+        self.accepting_states = {self.MALICIOUS}
         
-        self.transition_table = {
-            (self.START, 'alpha'): self.COLLECTING_TLD,
-            (self.START, '.'): self.COLLECTING_TLD,
-            (self.START, 'default'): self.REJECT,
-            (self.COLLECTING_TLD, 'alpha'): self.COLLECTING_TLD,
-            (self.COLLECTING_TLD, 'digit'): self.COLLECTING_TLD,
-            (self.COLLECTING_TLD, 'hyphen'): self.COLLECTING_TLD,
-            (self.COLLECTING_TLD, 'end'): self.LOOKUP,
-            (self.COLLECTING_TLD, 'default'): self.LOOKUP,
-            (self.LOOKUP, 'any'): self.LOOKUP,
+        # Transition table: δ(state, character) → next_state
+        self.delta = {
+            # From START - branch based on first character
+            (self.Q0_START, 'z'): self.Q1_Z,
+            (self.Q0_START, 'e'): self.Q4_E,
+            (self.Q0_START, 'm'): self.Q7_M,
+            (self.Q0_START, 't'): self.Q10_T,
+            (self.Q0_START, 'x'): self.Q12_X,
+            
+            # ZIP path: z → i → p → END
+            (self.Q1_Z, 'i'): self.Q2_ZI,
+            (self.Q2_ZI, 'p'): self.Q3_ZIP,
+            (self.Q3_ZIP, 'END'): self.MALICIOUS,
+            
+            # EXE path: e → x → e → END
+            (self.Q4_E, 'x'): self.Q5_EX,
+            (self.Q5_EX, 'e'): self.Q6_EXE,
+            (self.Q6_EXE, 'END'): self.MALICIOUS,
+            
+            # MOV path: m → o → v → END
+            (self.Q7_M, 'o'): self.Q8_MO,
+            (self.Q8_MO, 'v'): self.Q9_MOV,
+            (self.Q9_MOV, 'END'): self.MALICIOUS,
+            
+            # TK path: t → k → END
+            (self.Q10_T, 'k'): self.Q11_TK,
+            (self.Q11_TK, 'END'): self.MALICIOUS,
+            
+            # XYZ path: x → y → z → END
+            (self.Q12_X, 'y'): self.Q13_XY,
+            (self.Q13_XY, 'z'): self.Q14_XYZ,
+            (self.Q14_XYZ, 'END'): self.MALICIOUS,
         }
-    
-    def _get_char_type(self, char: str, is_last: bool = False) -> str:
-        """Classify character for transition table lookup"""
-        if char.isalpha():
-            return 'alpha'
-        elif char.isdigit():
-            return 'digit'
-        elif char == '-':
-            return 'hyphen'
-        elif is_last:
-            return 'end'
-        else:
-            return 'default'
-    
-    def _transition(self, state: str, char: str, is_last: bool = False) -> Tuple[str, str]:
-        """Transition function δ(q, σ) → q'"""
-        char_type = self._get_char_type(char, is_last)
-        next_state = self.transition_table.get(
-            (state, char_type),
-            self.transition_table.get((state, 'default'), self.REJECT)
-        )
-        return next_state
     
     def check(self, tld: str) -> Dict:
-        """Execute DFA and return risk assessment"""
+        """Execute DFA with pure state transitions (no string lookups)"""
         if not tld:
             return {
                 "triggered": False,
@@ -231,34 +278,57 @@ class TLDDFA:
                 "risk_score": 0.0
             }
         
-        state = self.initial_state
-        tld_lower = tld.lower().lstrip('.')
+        current_state = self.initial_state
+        tld_clean = tld.lower().lstrip('.')
+        detected_tld = ""
         
-        i = 0
-        while i < len(tld_lower):
-            char = tld_lower[i]
-            is_last = (i == len(tld_lower) - 1)
-            state = self._transition(state, char, is_last)
-            i += 1
+        if self.debug:
+            print(f"\n=== TLDDFA Transition Trace ===")
+            print(f"Input: '.{tld_clean}'")
         
-        state = self._transition(state, '', is_last=True)
+        # Process each character using transition table
+        for char in tld_clean:
+            prev_state = current_state
+            current_state = self.delta.get((current_state, char), self.REJECT)
+            detected_tld += char
+            
+            # Visualization for professor
+            if self.debug:
+                print(f"State {prev_state} --({char})--> State {current_state}")
+            
+            if current_state == self.REJECT:
+                break
         
-        if tld_lower in self.high_risk_tlds:
-            final_state = self.ACCEPT
+        # Check for END marker (string exhausted)
+        if current_state != self.REJECT:
+            prev_state = current_state
+            current_state = self.delta.get((current_state, 'END'), self.SAFE)
+            if self.debug:
+                print(f"State {prev_state} --(END)--> State {current_state}")
+        
+        # Determine result based on final state (pure DFA logic)
+        if current_state in self.accepting_states:
             triggered = True
-            reason = f"High-risk TLD detected: .{tld_lower}"
             risk_score = self.risk_score
-        else:
-            final_state = self.REJECT
+            reason = f"High-risk TLD detected via state path: .{detected_tld}"
+        elif current_state == self.SAFE:
             triggered = False
-            reason = f"Safe TLD: .{tld_lower}"
             risk_score = 0.0
+            reason = f"Safe TLD detected via state path: .{detected_tld}"
+        else:
+            triggered = False
+            risk_score = 0.0
+            reason = f"Unknown TLD - rejected at state {current_state}: .{detected_tld}"
+        
+        if self.debug:
+            print(f"Final State: {current_state} | Triggered: {triggered}")
+            print("="*40)
         
         return {
             "triggered": triggered,
-            "state": final_state,
+            "state": current_state,
             "reason": reason,
-            "value": tld_lower,
+            "value": tld_clean,
             "risk_score": risk_score
         }
 
@@ -266,11 +336,12 @@ class TLDDFA:
 class Layer1:
     """Layer 1 coordinator: combines Length, Schema, and TLD DFA checks"""
     
-    def __init__(self, length_threshold: int = 75):
+    def __init__(self, length_threshold: int = 75, debug: bool = False):
         self.length_dfa = LengthDFA(length_threshold)
-        self.schema_dfa = SchemaDFA()
-        self.tld_dfa = TLDDFA()
+        self.schema_dfa = SchemaDFA(debug=debug)
+        self.tld_dfa = TLDDFA(debug=debug)
         self.tokenizer = TokenizerDFA()
+        self.debug = debug
     
     def analyze(self, url: str) -> Dict:
         """Execute all Layer 1 DFA checks and aggregate results"""
