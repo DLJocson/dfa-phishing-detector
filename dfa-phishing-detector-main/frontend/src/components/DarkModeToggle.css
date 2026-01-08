@@ -1,0 +1,60 @@
+.dark-toggle {
+  position: relative;
+  width: 64px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.dark-toggle:hover {
+  box-shadow: 0 8px 22px rgba(59, 130, 246, 0.6);
+}
+
+.dark-toggle .icon {
+  position: absolute;
+  font-size: 14px;
+  transition: opacity 0.3s ease;
+}
+
+.dark-toggle .sun {
+  left: 8px;
+  opacity: 1;
+}
+
+.dark-toggle .moon {
+  right: 8px;
+  opacity: 0;
+}
+
+.toggle-thumb {
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  z-index: 2;
+}
+
+.dark-toggle.active {
+  background: linear-gradient(135deg, #111827, #1f2937);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.dark-toggle.active .sun {
+  opacity: 0;
+}
+
+.dark-toggle.active .moon {
+  opacity: 1;
+}
+
+.dark-toggle.active .toggle-thumb {
+  transform: translateX(32px);
+}

@@ -1,0 +1,276 @@
+.dfa-visualization-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.viz-title {
+  margin: 0 0 24px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 12px;
+}
+
+.dfa-layers-viz {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dfa-layer-viz {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.dfa-layer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.dfa-layer-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.layer-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.status-indicator {
+  font-size: 12px;
+}
+
+.status-indicator.active {
+  color: #ef4444;
+}
+
+.status-indicator.inactive {
+  color: #10b981;
+}
+
+.dfa-states {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+
+.dfa-state {
+  min-width: 80px;
+  height: 60px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+}
+
+.dfa-state.initial {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  border: 2px solid #6366f1;
+}
+
+.dfa-state.accept-safe {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+}
+
+.dfa-state.accept-triggered {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.state-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.state-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.state-indicator.triggered {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.state-indicator.safe {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.dfa-transition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0 4px;
+}
+
+.transition-line {
+  width: 2px;
+  height: 30px;
+  background: #6b7280;
+  position: relative;
+}
+
+.transition-line::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: -4px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid #6b7280;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+.transition-label {
+  font-size: 10px;
+  color: #6b7280;
+  text-align: center;
+  text-transform: capitalize;
+  padding: 2px 6px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.legend {
+  display: flex;
+  gap: 24px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.legend-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.legend-icon.safe {
+  background: #10b981;
+  color: white;
+}
+
+.legend-icon.triggered {
+  background: #ef4444;
+  color: white;
+}
+
+/*additional - dark card*/
+
+.results-container,
+.input-bar-container,
+.dfa-visualization-container {
+  background: transparent;
+}
+
+/* additional - DFA layers */
+.dfa-layer-viz {
+  animation: layerFade 0.6s ease forwards;
+  animation-delay: calc(var(--layer-index) * 0.15s);
+  opacity: 0;
+}
+
+@keyframes layerFade {
+  from {
+    opacity: 0;
+    transform: translateX(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.dfa-layer-viz {
+  padding: 16px;
+  border-radius: 12px;
+
+  /* additional - purple gradient panel */
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.18),
+    rgba(76, 29, 149, 0.28)
+  );
+
+  border: 1px solid rgba(167, 139, 250, 0.35);
+
+  box-shadow:
+    0 0 18px rgba(139, 92, 246, 0.25),
+    inset 0 0 12px rgba(139, 92, 246, 0.15);
+
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+body.dark-mode .dfa-layer-viz {
+  background: linear-gradient(
+    135deg,
+    rgba(91, 33, 182, 0.35),
+    rgba(15, 0, 30, 0.6)
+  );
+
+  border-color: rgba(167, 139, 250, 0.45);
+
+  box-shadow:
+    0 0 25px rgba(139, 92, 246, 0.35),
+    inset 0 0 18px rgba(139, 92, 246, 0.2);
+}
