@@ -10,6 +10,7 @@ class TokenType(Enum):
     HOSTNAME = "hostname"
     PATH = "path"
     QUERY = "query"
+    FRAGMENT = "fragment"
 
 
 class TokenizerDFA:
@@ -27,7 +28,8 @@ class TokenizerDFA:
             TokenType.SCHEMA: "",
             TokenType.HOSTNAME: "",
             TokenType.PATH: "",
-            TokenType.QUERY: ""
+            TokenType.QUERY: "",
+            TokenType.FRAGMENT: ""
         }
     
     def _build_transition_table(self):
@@ -67,8 +69,11 @@ class TokenizerDFA:
                 "other": ("PATH", self._append_token)
             },
             "QUERY": {
-                "hash": ("END", self._finalize_query),
+                "hash": ("FRAGMENT", self._finalize_query),
                 "other": ("QUERY", self._append_token)
+            },
+            "FRAGMENT": {
+                "other": ("FRAGMENT", self._append_token)
             },
             "END": {}
         }
@@ -134,6 +139,11 @@ class TokenizerDFA:
         self.tokens[TokenType.QUERY] = self.current_token
         self.current_token = ""
     
+    def _finalize_fragment(self, char: str):
+        """Save fragment token and reset"""
+        self.tokens[TokenType.FRAGMENT] = self.current_token
+        self.current_token = ""
+    
     def preprocess(self, url: str) -> str:
         """Normalize and decode URL"""
         url = url.strip().lower()
@@ -180,12 +190,15 @@ class TokenizerDFA:
             self.tokens[TokenType.PATH] = self.current_token
         elif self.state == "QUERY" and self.current_token:
             self.tokens[TokenType.QUERY] = self.current_token
+        elif self.state == "FRAGMENT" and self.current_token:
+            self.tokens[TokenType.FRAGMENT] = self.current_token
         
         return {
             "schema": self.tokens[TokenType.SCHEMA],
             "hostname": self.tokens[TokenType.HOSTNAME],
             "path": self.tokens[TokenType.PATH],
-            "query": self.tokens[TokenType.QUERY]
+            "query": self.tokens[TokenType.QUERY],
+            "fragment": self.tokens[TokenType.FRAGMENT]
         }
     
     def get_hostname_components(self, hostname: str) -> Dict[str, str]:
