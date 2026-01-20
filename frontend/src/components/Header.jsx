@@ -8,7 +8,7 @@ const Header = () => {
     <header className="navbar-header">
       <div className="navbar-left">
         <img src={logo} alt="App Logo" className="navbar-logo" />
-        <span className="navbar-title">Hierarchical DFA Phishing Detector</span>
+        <span className="navbar-title">PhishGuard: A Hierarchical DFA-Based Phishing Detection System</span>
       </div>
       <div className="navbar-right">
         <div className="navbar-academic">
