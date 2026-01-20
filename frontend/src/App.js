@@ -9,7 +9,9 @@ import './App.css';
 import InputBar from './components/InputBar';
 import ResultsCard from './components/ResultsCard';
 import DFAVisualization from './visualization/DFAVisualization';
-import DarkModeToggle from './components/DarkModeToggle';
+import Header from './components/Header';
+import RiskSummaryCard from './components/RiskSummaryCard';
+import UrlComponentsCard from './components/UrlComponentsCard';
 import logo from './assets/logo.png';
 
 
@@ -50,39 +52,31 @@ function App() {
     }
   };
 
+
   return (
     <div className="App">
-      <header className="app-header" style={{ position: 'relative' }}>
-
-  <div style={{ position: 'absolute', top: 20, right: 20 }}>
-    <DarkModeToggle />
-  </div>
-
-  <div className="header-content">
-    <div className="header-title">
-      <img src={logo} alt="App Logo" className="app-logo" />
-      <h1 className="app-title">
-        Hierarchical DFA-Based Phishing URL Detector
-      </h1>
-    </div>
-
-    <p className="app-subtitle">
-      Multi-layer deterministic finite automata for accurate phishing detection
-    </p>
-  </div>
-
-</header>
+      <Header />
 
       <main className="app-main">
     {/* additional - 2 Panels */}
     <div className="card-panels">
-    {/* additional - left panel input */}
-    <div className="card-panel">
-      <InputBar onAnalyze={handleAnalyze} isLoading={isLoading} />
-    </div>
+      {/* Left Panel: URL input, Risk, URL Components */}
+      <div className="left-panel flex flex-col gap-6 p-6">
+        <InputBar onAnalyze={handleAnalyze} isLoading={isLoading} />
+        {analysis && (
+          <>
+            <div className="w-full">
+              <RiskSummaryCard analysis={analysis} />
+            </div>
+            <div className="w-full">
+              <UrlComponentsCard analysis={analysis} />
+            </div>
+          </>
+        )}
+      </div>
 
-    {/* additional - right panel input */}
-    <div className="card-panel">
+      {/* Right Panel: DFA Layer Analysis */}
+      <div className="card-panel">
       {error && (
         <div className="error-message">
           <span className="error-icon">⚠️</span>
@@ -94,20 +88,21 @@ function App() {
         <ResultsCard analysis={analysis} />
       ) : (
         <div className="placeholder">
-          <h3>Analysis Results</h3>
-          <p>Results will appear here after analyzing a URL.</p>
+          <h3>Layer Analysis</h3>
+          <p>Run an analysis to see which DFA checks triggered per layer.</p>
         </div>
       )}
     </div>
-  </div>
 
-  {/* additional - DFA viz below */}
-  {analysis && (
-    <div className="dfa-panel">
-      <DFAVisualization analysis={analysis} />
     </div>
-  )}
-</main>
+
+    {/* additional - DFA viz below */}
+    {analysis && (
+      <div className="dfa-panel">
+        <DFAVisualization analysis={analysis} />
+      </div>
+    )}
+  </main>
 
       <footer className="app-footer">
         <p>
