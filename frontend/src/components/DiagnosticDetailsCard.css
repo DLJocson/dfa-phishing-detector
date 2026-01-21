@@ -1,0 +1,175 @@
+/* Diagnostic Details Card Container */
+.diagnostic-details-card {
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 15px 45px -10px rgba(124, 58, 237, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.4);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+body.dark-mode .diagnostic-details-card {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 30px rgba(124, 58, 237, 0.1);
+}
+
+.card-header {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(124, 58, 237, 0.1);
+}
+
+.card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+body.dark-mode .card-title {
+  color: #f3f4f6;
+}
+
+body.dark-mode .card-header {
+  border-bottom-color: rgba(124, 58, 237, 0.2);
+}
+
+/* Table Container */
+.diagnostic-table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+/* Diagnostic Table */
+.diagnostic-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+/* Table Headers */
+.diagnostic-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  padding: 12px 8px;
+  border-bottom: 2px solid #f3f4f6;
+  font-weight: 600;
+}
+
+/* Table Cells */
+.diagnostic-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+/* Layer Cell */
+.layer-cell {
+  font-weight: 600;
+  color: #374151;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 0.9rem;
+}
+
+body.dark-mode .layer-cell {
+  color: #e2e8f0;
+}
+
+/* Pattern Cell */
+.pattern-cell {
+  color: #374151;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+body.dark-mode .pattern-cell {
+  color: #e5e7eb;
+}
+
+/* Weight Cell */
+.weight-cell {
+  font-weight: 700;
+  color: #dc2626;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+body.dark-mode .weight-cell {
+  color: #ef4444;
+}
+
+/* Total Score Section */
+.total-score {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-top: auto;
+}
+
+body.dark-mode .total-score {
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+  border-color: #4b5563;
+}
+
+.total-score-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+body.dark-mode .total-score-label {
+  color: #e5e7eb;
+}
+
+.total-score-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #dc2626;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+body.dark-mode .total-score-value {
+  color: #ef4444;
+}
+
+/* Dark Mode Table Headers */
+body.dark-mode .diagnostic-table th {
+  color: #94a3b8;
+  border-bottom-color: #334155;
+}
+
+/* Dark Mode Table Cells */
+body.dark-mode .diagnostic-table td {
+  border-bottom-color: #334155;
+}
+
+/* Alternating Row Colors */
+.diagnostic-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+body.dark-mode .diagnostic-table tbody tr:nth-child(even) {
+  background-color: #1e293b;
+}
+
+/* Hover Effect */
+.diagnostic-table tbody tr:hover {
+  background-color: #f3f4f6;
+}
+
+body.dark-mode .diagnostic-table tbody tr:hover {
+  background-color: #374151;
+}

@@ -7,12 +7,13 @@
 import React, { useState } from 'react';
 import './App.css';
 import InputBar from './components/InputBar';
-import ResultsCard from './components/ResultsCard';
-import DFAVisualization from './visualization/DFAVisualization';
-import Header from './components/Header';
 import RiskSummaryCard from './components/RiskSummaryCard';
 import UrlComponentsCard from './components/UrlComponentsCard';
-import logo from './assets/logo.png';
+import ResultsCard from './components/ResultsCard';
+import DiagnosticDetailsCard from './components/DiagnosticDetailsCard';
+import DFAVisualization from './visualization/DFAVisualization';
+import SystemOverview from './components/SystemOverview';
+import Header from './components/Header';
 
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -22,6 +23,12 @@ function App() {
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const handleReset = () => {
+    setAnalysis(null);
+    setError(null);
+    setIsLoading(false);
+  };
 
   const handleAnalyze = async (url) => {
     setIsLoading(true);
@@ -43,7 +50,11 @@ function App() {
       }
 
       const data = await response.json();
-      setAnalysis(data);
+      // Defensive: ensure layers is always an array
+      setAnalysis({
+        ...data,
+        layers: Array.isArray(data.layers) ? data.layers : [],
+      });
     } catch (err) {
       setError(err.message || 'An error occurred while analyzing the URL');
       console.error('Analysis error:', err);
@@ -55,13 +66,16 @@ function App() {
 
   return (
     <div className="App">
-      <Header />
+      <Header onReset={handleReset} />
 
       <main className="app-main">
     {/* additional - 2 Panels */}
     <div className="card-panels">
       {/* Left Panel: URL input, Risk, URL Components */}
-      <div className="left-panel flex flex-col gap-6 p-6">
+      <div className={`left-panel flex flex-col gap-6 p-6 ${analysis ? 'has-analysis' : ''}`}>
+        <div className="panel-header">
+          <h3 className="panel-title">URL Analysis</h3>
+        </div>
         <InputBar onAnalyze={handleAnalyze} isLoading={isLoading} />
         {analysis && (
           <>
@@ -76,7 +90,10 @@ function App() {
       </div>
 
       {/* Right Panel: DFA Layer Analysis */}
-      <div className="card-panel">
+      <div className={`card-panel ${analysis ? 'has-analysis' : ''}`}>
+        <div className="panel-header">
+          <h3 className="panel-title">DFA Layer Analysis</h3>
+        </div>
       {error && (
         <div className="error-message">
           <span className="error-icon">⚠️</span>
@@ -96,10 +113,24 @@ function App() {
 
     </div>
 
-    {/* additional - DFA viz below */}
+    {/* Diagnostic Details panel below, spanning both columns */}
     {analysis && (
-      <div className="dfa-panel">
+      <div className="diagnostic-panel full-width with-analysis">
+        <DiagnosticDetailsCard analysis={analysis} />
+      </div>
+    )}
+
+    {/* DFA State Transition panel below, spanning both columns */}
+    {analysis && (
+      <div className="dfa-panel full-width">
         <DFAVisualization analysis={analysis} />
+      </div>
+    )}
+
+    {/* System Overview panel below, spanning both columns - only show when no analysis */}
+    {!analysis && (
+      <div className="system-overview-panel full-width">
+        <SystemOverview />
       </div>
     )}
   </main>

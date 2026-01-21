@@ -1,18 +1,21 @@
-/* === Enhanced Animations & Theme Transitions === */
+/* =========================================
+   1. ANIMATIONS & TRANSITIONS
+   ========================================= */
 
 @media (prefers-reduced-motion: no-preference) {
   .btn,
   button,
   .url-input {
-    transition: background 0.18s cubic-bezier(.4,0,.2,1), color 0.18s cubic-bezier(.4,0,.2,1), box-shadow 0.18s cubic-bezier(.4,0,.2,1), transform 0.12s cubic-bezier(.4,0,.2,1);
+    transition: background 0.2s cubic-bezier(.4,0,.2,1), color 0.2s cubic-bezier(.4,0,.2,1), box-shadow 0.2s cubic-bezier(.4,0,.2,1), transform 0.15s cubic-bezier(.4,0,.2,1), border-color 0.2s ease;
   }
 
   .btn:hover,
   button:hover,
   .url-input:hover {
-    filter: brightness(1.04);
-    box-shadow: 0 2px 8px 0 rgba(16,30,54,0.10);
-    transform: translateY(-1px) scale(1.02);
+    filter: brightness(1.02);
+    /* ENHANCED GLOW */
+    box-shadow: 0 8px 25px 0 rgba(124, 58, 237, 0.3); 
+    transform: translateY(-2px) scale(1.01);
   }
 
   .btn:active,
@@ -32,26 +35,23 @@
 
   .card-panel,
   .left-panel,
+  .header-content,
   .risk-summary-card-refactored,
   .tokenizer-dfa-card,
   .layer-card {
-    transition: box-shadow 0.22s cubic-bezier(.4,0,.2,1), background 0.22s cubic-bezier(.4,0,.2,1), transform 0.22s cubic-bezier(.4,0,.2,1), opacity 0.22s cubic-bezier(.4,0,.2,1);
-    opacity: 1;
-    will-change: transform, opacity;
+    transition: box-shadow 0.3s cubic-bezier(.4,0,.2,1), background 0.3s ease, transform 0.3s cubic-bezier(.4,0,.2,1), border-color 0.3s ease;
+    will-change: transform, box-shadow;
   }
 
   .card-panel.fade-in,
-  .left-panel.fade-in,
-  .risk-summary-card-refactored.fade-in,
-  .tokenizer-dfa-card.fade-in,
-  .layer-card.fade-in {
-    animation: fadeInUp 0.5s cubic-bezier(.4,0,.2,1);
+  .left-panel.fade-in {
+    animation: fadeInUp 0.6s cubic-bezier(.4,0,.2,1);
   }
 
   @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translateY(24px);
+      transform: translateY(30px);
     }
     to {
       opacity: 1;
@@ -61,37 +61,33 @@
 
   .token-row,
   .checks-list .check-item {
-    transition: background 0.18s cubic-bezier(.4,0,.2,1), box-shadow 0.18s cubic-bezier(.4,0,.2,1), transform 0.12s cubic-bezier(.4,0,.2,1);
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
   .token-row:hover,
   .checks-list .check-item:hover {
-    background: #f3f4f6;
-    box-shadow: 0 2px 8px 0 rgba(16,30,54,0.07);
-    transform: translateY(-1px) scale(1.01);
+    background: rgba(139, 92, 246, 0.08);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1);
+    transform: translateY(-1px);
   }
 
-  /* Theme (light/dark) transitions */
   body,
   .app-header,
   .app-footer,
   .card-panel,
   .left-panel,
-  .risk-summary-card-refactored,
-  .tokenizer-dfa-card,
-  .layer-card {
-    transition-property: background, color, border-color, box-shadow, opacity;
-    transition-duration: 0.25s;
-    transition-timing-function: cubic-bezier(.4,0,.2,1);
+  .header-content,
+  .url-input {
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
 }
 
-/* Loading spinner for buttons */
+/* Spinner */
 .spinner {
   display: inline-block;
   width: 1.2em;
   height: 1.2em;
-  border: 2.5px solid #cbd5e1;
-  border-top: 2.5px solid #6366f1;
+  border: 2.5px solid #e9d5ff;
+  border-top: 2.5px solid #7c3aed;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   vertical-align: middle;
@@ -103,113 +99,21 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition: none !important;
     animation: none !important;
   }
 }
-/* === Animations & Transitions === */
 
-@media (prefers-reduced-motion: no-preference) {
-  .btn,
-  button,
-  .url-input {
-    transition: background 0.18s cubic-bezier(.4,0,.2,1), color 0.18s cubic-bezier(.4,0,.2,1), box-shadow 0.18s cubic-bezier(.4,0,.2,1), transform 0.12s cubic-bezier(.4,0,.2,1);
-  }
+/* =========================================
+   2. LIGHT MODE THEME & SPACIOUS HEADER
+   ========================================= */
 
-  .btn:hover,
-  button:hover,
-  .url-input:hover {
-    filter: brightness(1.04);
-    box-shadow: 0 2px 8px 0 rgba(16,30,54,0.10);
-    transform: translateY(-1px) scale(1.02);
-  }
-
-  .btn:active,
-  button:active {
-    filter: brightness(0.98);
-    transform: scale(0.98);
-  }
-
-  .card-panel,
-  .left-panel,
-  .risk-summary-card-refactored,
-  .tokenizer-dfa-card,
-  .layer-card {
-    transition: box-shadow 0.22s cubic-bezier(.4,0,.2,1), background 0.22s cubic-bezier(.4,0,.2,1), transform 0.22s cubic-bezier(.4,0,.2,1), opacity 0.22s cubic-bezier(.4,0,.2,1);
-    opacity: 1;
-    will-change: transform, opacity;
-  }
-
-  .card-panel.fade-in,
-  .left-panel.fade-in,
-  .risk-summary-card-refactored.fade-in,
-  .tokenizer-dfa-card.fade-in,
-  .layer-card.fade-in {
-    animation: fadeInUp 0.5s cubic-bezier(.4,0,.2,1);
-  }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(24px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .token-row,
-  .checks-list .check-item {
-    transition: background 0.18s cubic-bezier(.4,0,.2,1), box-shadow 0.18s cubic-bezier(.4,0,.2,1), transform 0.12s cubic-bezier(.4,0,.2,1);
-  }
-  .token-row:hover,
-  .checks-list .check-item:hover {
-    background: #f3f4f6;
-    box-shadow: 0 2px 8px 0 rgba(16,30,54,0.07);
-    transform: translateY(-1px) scale(1.01);
-  }
-}
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-/* Ensure left panel is styled and visible */
-.left-panel {
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: none;
-  border: 1px solid #d4d4e0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  gap: 24px;
-}
-
-body.dark-mode .left-panel {
-  background: #12121e;
-  border-color: #2e2e48;
-}
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
-
-/* Global static mode: disable animations and transitions */
-*,
-*::before,
-*::after {
-  transition: none !important;
-  animation: none !important;
 }
 
 body {
@@ -219,11 +123,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  background: #f8fafc;
+  background-color: #f5f3ff;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(253,16%,90%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,39%,90%,1) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(339,49%,90%,1) 0, transparent 50%);
+  background-attachment: fixed;
+  
   min-height: 100vh;
-  color: #1f2937;
+  color: #1e1b4b; 
 }
-
 
 .App {
   min-height: 100vh;
@@ -231,55 +140,66 @@ body {
   flex-direction: column;
 }
 
-
+/* === HEADER LAYOUT (FIXED SPACING) === */
 .app-header {
   display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 32px;
+  grid-template-columns: 480px 1fr; 
+  gap: 80px; 
   align-items: stretch;
-  margin: 0; /* Ensure full width */
-  width: 100%; /* Ensure full width */
+  width: 100%;
+  padding: 40px 80px; 
+  /* PRESERVED: Large space below header */
+  margin-bottom: 120px; 
 }
 
+/* THEME: Header Glass Cards */
 .header-content {
-  max-width: 1200px;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: none;
-  border: 1px solid #d4d4e0;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  
+  /* ENHANCED GLOW */
+  box-shadow: 0 20px 40px -5px rgba(124, 58, 237, 0.2), inset 0 0 15px rgba(255, 255, 255, 0.5);
+  
+  border-radius: 24px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  justify-content: center;
+  padding: 48px; 
   gap: 24px;
-  margin: 0 auto;
   text-align: center;
 }
 
 .app-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1f2937;
-  width: 100%; /* Ensure full width */
-  margin: 0; /* Remove margin */
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #1e1b4b 0%, #7c3aed 100%);
+  -webkit-text-fill-color: transparent;
+  width: 100%;
+  margin: 0 0 8px 0;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 20px;
+  display: flex;
 }
 
 .title-icon {
-  font-size: 36px;
+  font-size: 42px;
+  color: #7c3aed;
 }
 
 .app-subtitle {
-  font-size: 16px;
-  color: #6b7280;
-  font-weight: 400;
+  font-size: 17px;
+  color: #5b21b6;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .app-main {
   flex: 1;
-  padding: 40px 20px;
+  padding: 0 80px 40px; 
   width: 100%;
 }
 
@@ -287,52 +207,56 @@ body {
   max-width: 1200px;
   margin: 20px auto;
   padding: 16px 20px;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-left: 4px solid #ef4444;
   border-radius: 8px;
   color: #991b1b;
   display: flex;
   align-items: center;
   gap: 12px;
-  font-weight: 500;
-}
-
-.error-icon {
-  font-size: 20px;
+  font-weight: 600;
 }
 
 .welcome-message {
   max-width: 800px;
   margin: 60px auto;
-  padding: 40px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: none;
+  padding: 50px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 1);
+  
+  /* ENHANCED GLOW */
+  box-shadow: 0 30px 60px -12px rgba(124, 58, 237, 0.25);
+  
+  border-radius: 24px;
   text-align: center;
 }
 
 .welcome-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
+  font-size: 72px;
+  margin-bottom: 24px;
+  filter: drop-shadow(0 0 20px rgba(167, 139, 250, 0.5));
 }
 
 .welcome-message h2 {
-  font-size: 28px;
-  color: #1f2937;
-  margin-bottom: 16px;
+  font-size: 30px;
+  color: #1e1b4b;
+  margin-bottom: 18px;
+  font-weight: 700;
 }
 
 .welcome-message p {
-  font-size: 16px;
-  color: #6b7280;
-  line-height: 1.6;
+  font-size: 17px;
+  color: #4c1d95;
+  line-height: 1.7;
   margin-bottom: 32px;
 }
 
 .features-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   text-align: left;
   max-width: 600px;
   margin: 0 auto;
@@ -341,16 +265,17 @@ body {
 .feature-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #f9fafb;
-  border-radius: 8px;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 12px;
 }
 
 .feature-icon {
-  width: 24px;
-  height: 24px;
-  background: #10b981;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border-radius: 50%;
   display: flex;
@@ -359,41 +284,253 @@ body {
   font-weight: bold;
   font-size: 14px;
   flex-shrink: 0;
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.3);
 }
 
 .app-footer {
-  background: #ffffff;
-  backdrop-filter: none;
-  padding: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  padding: 30px;
   text-align: center;
-  color: #6b7280;
+  color: #6d28d9;
   font-size: 14px;
+  border-top: 1px solid rgba(139, 92, 246, 0.1);
 }
 
 .footer-subtitle {
   font-size: 12px;
-  margin-top: 4px;
-  color: #9ca3af;
+  margin-top: 6px;
+  color: #8b5cf6;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  background: rgba(139, 92, 246, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #7c3aed;
 }
 
-/* additional - dark mode */
+/* === MAIN CARD PANELS === */
+.card-panels {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: stretch;
+}
+
+/* PANEL STYLES (Light Mode) */
+.left-panel,
+.card-panel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  
+  /* ENHANCED GLOW - Spread increased */
+  box-shadow: 0 15px 45px -10px rgba(124, 58, 237, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.4);
+  
+  border-radius: 24px;
+  padding: 32px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-top: 120px; /* Increased spacing when no URL */
+}
+
+.left-panel {
+  gap: 32px;
+}
+
+/* When analysis is present, reduce spacing */
+.left-panel.has-analysis,
+.card-panel.has-analysis {
+  margin-top: 50px;
+}
+
+/* Panel Headers */
+.panel-header {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(124, 58, 237, 0.1);
+}
+
+.panel-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+body.dark-mode .panel-title {
+  color: #f3f4f6;
+}
+
+body.dark-mode .panel-header {
+  border-bottom-color: rgba(124, 58, 237, 0.2);
+}
+
+.card-panel:hover,
+.left-panel:hover,
+.header-content:hover {
+  transform: translateY(-6px);
+  /* INTENSE HOVER GLOW */
+  box-shadow: 0 40px 80px -20px rgba(124, 58, 237, 0.35);
+  border-color: #fff;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced Panel Hover Effects */
+.card-panel,
+.left-panel {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-panel:hover,
+.left-panel:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 40px 80px -20px rgba(124, 58, 237, 0.35);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.dfa-panel.full-width,
+.diagnostic-panel.full-width,
+.system-overview-panel.full-width {
+  grid-column: 1 / span 2;
+  width: 100%;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.placeholder {
+  color: #8b5cf6;
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.placeholder h3 {
+  font-size: 22px;
+  margin-bottom: 16px;
+  color: #6d28d9;
+}
+
+.placeholder p {
+  font-size: 15px;
+  opacity: 0.85;
+}
+
+.dfa-panel,
+.diagnostic-panel,
+.system-overview-panel {
+  grid-column: 1 / span 2;
+  max-width: 1600px;
+  margin: 48px auto 0;
+  width: 100%;
+  box-shadow: 0 15px 40px -8px rgba(124, 58, 237, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dfa-panel {
+  margin-top: 80px; /* More prominent spacing for DFA panel */
+}
+
+.diagnostic-panel {
+  margin-top: 60px; /* Proper spacing from upper panels */
+}
+
+.diagnostic-panel.with-analysis {
+  margin-top: 100px; /* Significantly increased spacing when URL is analyzed */
+}
+
+.system-overview-panel {
+  margin-top: 160px; /* Further increased spacing for better separation */
+}
+
+.dfa-panel:hover,
+.diagnostic-panel:hover,
+.system-overview-panel:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 50px 100px -25px rgba(124, 58, 237, 0.4);
+}
+
+.dfa-panel.full-width,
+.diagnostic-panel.full-width,
+.system-overview-panel.full-width {
+  grid-column: 1 / span 2;
+  width: 100%;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Responsive Fixes */
+@media (max-width: 1100px) {
+  .app-header,
+  .card-panels {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 20px;
+  }
+  
+  .app-main {
+    padding: 0 20px 40px;
+  }
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.app-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 15px rgba(124, 58, 237, 0.4));
+  transition: transform 0.3s ease;
+}
+
+.app-logo:hover {
+  transform: scale(1.08);
+}
+
+/* =========================================
+   3. DARK MODE (CYBER SECURITY THEME - PRESERVED)
+   ========================================= */
+
 body.dark-mode {
-  background: #0f172a;
+  --neon-purple: #a855f7;
+  --dark-bg: #030712;
+  
+  background-color: var(--dark-bg);
+  background-image: 
+    linear-gradient(rgba(124, 58, 237, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
   color: #e5e7eb;
 }
 
 body.dark-mode .app-header {
-  background: #020617;
+  background: transparent;
   color: #f9fafb;
+}
+
+body.dark-mode .header-content {
+  background: rgba(3, 7, 18, 0.85);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  /* DARK MODE GLOW */
+  box-shadow: 0 10px 40px rgba(124, 58, 237, 0.25);
 }
 
 body.dark-mode .app-footer {
   background: #020617;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 body.dark-mode .welcome-message,
@@ -411,12 +548,7 @@ body.dark-mode .layer-name {
   color: #f9fafb;
 }
 
-/*additional - dark mode text color*/
-body.dark-mode {
-  color: #e5e7eb;
-}
-
-/* Headers & titles */
+/* Dark Mode Typography */
 body.dark-mode h1,
 body.dark-mode h2,
 body.dark-mode h3,
@@ -425,10 +557,13 @@ body.dark-mode .app-title,
 body.dark-mode .risk-title,
 body.dark-mode .layer-name,
 body.dark-mode .card-title {
-  color: #f9fafb;
+  color: #f8fafc;
+  background: none;
+  -webkit-text-fill-color: initial;
+  text-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
 }
 
-/* additional- subtitles, labels, descriptions */
+/* Subtitles, labels */
 body.dark-mode p,
 body.dark-mode span,
 body.dark-mode label,
@@ -437,83 +572,85 @@ body.dark-mode .examples-label,
 body.dark-mode .stat-label,
 body.dark-mode .token-label,
 body.dark-mode .layer-triggers {
-  color: #d1d5db;
+  color: #cbd5e1;
 }
 
-/* additional - cards */
-body.dark-mode .welcome-message,
-body.dark-mode .risk-summary-card,
-body.dark-mode .tokens-card,
-body.dark-mode .layer-card,
-body.dark-mode .dfa-visualization-container,
-body.dark-mode .breakdown-card {
-  background: #020617;
-  border-color: #2e2e48;
+/* Dark Mode Panels */
+body.dark-mode .card-panel,
+body.dark-mode .left-panel,
+body.dark-mode .welcome-message {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  /* DARK MODE GLOW */
+  box-shadow: 0 0 30px rgba(124, 58, 237, 0.1);
 }
 
-/* additional - inputs */
+/* Card Glow Effect in Dark Mode */
+body.dark-mode .card-panel:hover,
+body.dark-mode .left-panel:hover,
+body.dark-mode .welcome-message:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(168, 85, 247, 0.6);
+  /* INTENSE DARK MODE GLOW */
+  box-shadow: 
+    0 0 50px rgba(124, 58, 237, 0.4),
+    inset 0 0 25px rgba(124, 58, 237, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced Dark Mode for Full-Width Panels */
+body.dark-mode .dfa-panel:hover,
+body.dark-mode .diagnostic-panel:hover,
+body.dark-mode .system-overview-panel:hover {
+  transform: translateY(-8px) scale(1.01);
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: 
+    0 0 60px rgba(124, 58, 237, 0.5),
+    inset 0 0 30px rgba(124, 58, 237, 0.2);
+}
+
+/* Dark Mode Inputs (Terminal Style) */
 body.dark-mode .url-input {
-  background: #111827;
-  color: #f9fafb;
-  border-color: #374151;
+  background: #0f172a;
+  border: 2px solid #334155;
+  color: #a855f7;
+  font-family: 'Fira Code', monospace;
+  box-shadow: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.dark-mode .url-input:focus {
+  outline: none;
+  border-color: #a855f7;
+  background: #0b1121;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
 }
 
 body.dark-mode .url-input::placeholder {
-  color: #9ca3af;
-}
-
-body,
-.app-header,
-.app-footer {
-  transition: background 0.20s ease, color 0.20s ease;
-}
-
-/*additional - 2 card panel layout*/
-.card-panels {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-  align-items: stretch;
-}
-
-/* additional - glass card */
-.card-panel {
-  position: relative;
-  background: #ffffff;
-  backdrop-filter: none;
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: none;
-  border: 1px solid #d4d4e0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-body.dark-mode .card-panel {
-  background: #12121e;
-  border-color: #2e2e48;
-  box-shadow: none;
-}
-
-/* additional - placeholder */
-.placeholder {
   color: #475569;
-  text-align: center;
-  padding: 60px 20px;
+  font-family: sans-serif;
 }
 
-.placeholder h3 {
-  font-size: 20px;
-  margin-bottom: 12px;
-  color: #0f172a;
+body.dark-mode .url-input:hover {
+  border-color: #a855f7;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.1);
 }
 
-.placeholder p {
-  font-size: 14px;
-  opacity: 0.85;
+/* Dark Mode Features */
+body.dark-mode .feature-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.dark-mode .feature-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 body.dark-mode .placeholder {
@@ -524,44 +661,72 @@ body.dark-mode .placeholder h3 {
   color: #e0e7ff;
 }
 
-/* additional - DFA pAnel */
-.dfa-panel {
-  max-width: 1400px;
-  margin: 40px auto 0;
+/* Error message in dark mode */
+body.dark-mode .error-message {
+  background: rgba(69, 10, 10, 0.5);
+  border-color: #7f1d1d;
+  color: #fca5a5;
 }
 
-/* additional - responsive */
-@media (max-width: 1024px) {
-  .card-panels {
-    grid-template-columns: 1fr;
-  }
+/* Code blocks */
+body.dark-mode code {
+  background: rgba(0, 0, 0, 0.3);
+  color: #e879f9;
+  border: 1px solid rgba(168, 85, 247, 0.2);
 }
 
-/* additional - glowing border */
-.card-panel::before {
-  content: none;
+/* Logo glow */
+body.dark-mode .app-logo {
+  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.7));
+}
+body.dark-mode .app-logo:hover {
+  filter: drop-shadow(0 0 20px rgba(168, 85, 247, 1));
 }
 
-/* additional - strong glow */
-.card-panel:hover::before {
-  opacity: 1;
-  filter: blur(12px);
+/* Button Animations */
+body.dark-mode .analyze-button {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  position: relative;
+  overflow: hidden;
 }
 
-/* additional - ambient background */
-body::before {
-  content: none;
+body.dark-mode .analyze-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
 }
 
-.header-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
+body.dark-mode .analyze-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
 }
 
-.app-logo {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
+body.dark-mode .analyze-button:hover::before {
+  left: 100%;
+}
+
+body.dark-mode .analyze-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+body.dark-mode .analyze-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
