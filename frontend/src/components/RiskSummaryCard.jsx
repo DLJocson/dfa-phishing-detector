@@ -18,15 +18,35 @@ const RiskSummaryCard = ({ analysis }) => {
   // Constants
   const maxScore = 18.40;
   
-  // UPDATED LOGIC: Circle turns Red (#EF4444) if any risk is detected (> 0), otherwise Green (#10B981)
-  const riskColor = riskScore > 0 ? '#EF4444' : '#10B981';
+  // Risk Level Classification
+  const getRiskLevel = (score) => {
+    if (score >= 0.00 && score <= 2.00) return { level: 'Low', color: '#06B6D4' };
+    if (score >= 2.01 && score <= 6.00) return { level: 'Medium', color: '#EAB308' };
+    if (score >= 6.01 && score <= 12.00) return { level: 'High', color: '#F97316' };
+    if (score >= 12.01 && score <= 18.40) return { level: 'Critical', color: '#991B1B' };
+    return { level: 'Unknown', color: '#6B7280' };
+  };
+
+  // Classification Labels
+  const getClassification = (score) => {
+    if (score >= 0.00 && score <= 1.00) return { label: 'Benign', color: '#22C55E' };
+    if (score >= 1.01 && score <= 5.00) return { label: 'Suspicious', color: '#FACC15' };
+    if (score >= 5.01) return { label: 'Malicious', color: '#EF4444' };
+    return { label: 'Unknown', color: '#6B7280' };
+  };
+
+  const riskLevelInfo = getRiskLevel(riskScore);
+  const classificationInfo = getClassification(riskScore);
+  
+  // Use classification color for the gauge (more prominent)
+  const gaugeColor = classificationInfo.color;
 
   // Calculate Percentage for the Gradient (0 to 100)
   const percentage = Math.min(100, Math.max(0, (riskScore / maxScore) * 100));
   
   // The magic CSS style for the Conic Gradient
   const gaugeStyle = {
-    background: `conic-gradient(${riskColor} ${percentage}%, #e2e8f0 0deg)`
+    background: `conic-gradient(${gaugeColor} ${percentage}%, #e2e8f0 0deg)`
   };
 
   return (
@@ -35,10 +55,10 @@ const RiskSummaryCard = ({ analysis }) => {
       {/* Left Col: Dynamic Conic Gauge */}
       <div className="conic-gauge" style={gaugeStyle}>
         <div className="gauge-inner-circle">
-          {/* Numbers also turn Red if risk detected */}
+          {/* Numbers also use classification color */}
           <span 
             className="gauge-score-text" 
-            style={{ color: riskColor }}
+            style={{ color: gaugeColor }}
           >
             {Number(riskScore).toFixed(2)}
           </span>
@@ -49,6 +69,28 @@ const RiskSummaryCard = ({ analysis }) => {
       {/* Right Col: Clean Data Table */}
       <div className="score-breakdown">
         <div className="score-breakdown-title">Score Breakdown</div>
+        
+        {/* Risk Level and Classification Labels */}
+        <div className="risk-labels">
+          <div className="risk-label-item">
+            <span className="risk-label-text">Risk Level:</span>
+            <span 
+              className="risk-label-value" 
+              style={{ color: riskLevelInfo.color }}
+            >
+              {riskLevelInfo.level}
+            </span>
+          </div>
+          <div className="risk-label-item">
+            <span className="risk-label-text">Classification:</span>
+            <span 
+              className="risk-label-value" 
+              style={{ color: classificationInfo.color }}
+            >
+              {classificationInfo.label}
+            </span>
+          </div>
+        </div>
         
         <div className="breakdown-table">
           <div className="breakdown-row">

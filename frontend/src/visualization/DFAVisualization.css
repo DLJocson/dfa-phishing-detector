@@ -10,8 +10,8 @@
   box-shadow: 0 15px 45px -10px rgba(124, 58, 237, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.4);
   
   /* LAYOUT: From Code 1 */
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 24px;
+  padding: 32px;
   margin-top: 20px;
   position: relative;
   
@@ -28,7 +28,6 @@
 /* DARK MODE: Container Colors from Code 2 */
 body.dark-mode .dfa-visualization-container {
   background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(16px);
   border: 1px solid rgba(124, 58, 237, 0.3);
   box-shadow: 0 0 30px rgba(124, 58, 237, 0.1);
 }
@@ -37,10 +36,10 @@ body.dark-mode .dfa-visualization-container {
    2. HEADER & LAYERS
    ========================================= */
 .viz-title {
-  margin: 0 0 24px 0;
-  font-size: 20px;
+  margin: 0 0 20px 0;
+  font-size: 1.3rem;
   font-weight: 700;
-  color: #1e1b4b; /* Purple text from Code 2 */
+  color: #1f2937;
   border-bottom: 2px solid rgba(124, 58, 237, 0.1);
   padding-bottom: 12px;
 }
@@ -86,7 +85,7 @@ body.dark-mode .viz-title {
   border-radius: 12px;
   animation: layerFade 0.6s ease forwards;
   animation-delay: calc(var(--layer-index) * 0.15s);
-  opacity: 0;
+  opacity: 1; /* Fixed: Start with visible opacity */
   
   background: linear-gradient(
     135deg,
@@ -265,3 +264,23 @@ body.dark-mode .state-label {
 }
 
 body.dark-mode .legend-item { color: #cbd5e1; }
+
+/* =========================================
+   5. NO DATA STATE
+   ========================================= */
+.no-data {
+  padding: 40px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 16px;
+  background: rgba(243, 244, 246, 0.5);
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin: 20px 0;
+}
+
+body.dark-mode .no-data {
+  background: rgba(55, 65, 81, 0.3);
+  color: #9ca3af;
+  border-color: #4b5563;
+}

@@ -6,8 +6,15 @@ import React from 'react';
 import './DFAVisualization.css';
 
 const DFAVisualization = ({ analysis }) => {
-  if (!analysis || !analysis.layers) {
-    return null;
+  if (!analysis || !analysis.layers || !Array.isArray(analysis.layers)) {
+    return (
+      <div className="dfa-visualization-container">
+        <h3 className="viz-title">DFA State Transitions</h3>
+        <div className="no-data">
+          <p>No analysis data available. Please analyze a URL to see DFA state transitions.</p>
+        </div>
+      </div>
+    );
   }
 
   const { layers } = analysis;
@@ -39,7 +46,7 @@ const DFAVisualization = ({ analysis }) => {
           </div>
           
           {checks.map(([checkName, checkResult], checkIndex) => {
-            // Layout Logic preserved: subsequent checks appear "skipped" if a threat is detected
+            // Layout Logic: subsequent checks appear "skipped" if a threat is detected
             const isSkipped = firstTriggeredIndex >= 0 && checkIndex > firstTriggeredIndex;
             const stateClass = isSkipped
               ? 'skipped'

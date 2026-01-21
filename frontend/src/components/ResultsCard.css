@@ -146,6 +146,7 @@ body.dark-mode .check-item.triggered {
   align-items: center;
   gap: 10px;
   margin-bottom: 6px;
+  justify-content: space-between;
 }
 
 .check-icon {
@@ -156,6 +157,45 @@ body.dark-mode .check-item.triggered {
 .check-icon.triggered { color: #dc2626; }
 body.dark-mode .check-icon.safe { color: #10b981; }
 body.dark-mode .check-icon.triggered { color: #ef4444; }
+
+.check-weight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  margin-left: auto;
+}
+
+body.dark-mode .check-weight {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.check-weight .weight-label {
+  font-size: 0.7rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+body.dark-mode .check-weight .weight-label {
+  color: #9ca3af;
+}
+
+.check-weight .weight-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #374151;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+body.dark-mode .check-weight .weight-value {
+  color: #e5e7eb;
+}
 
 
 .check-name {

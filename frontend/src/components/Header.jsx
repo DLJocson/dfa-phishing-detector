@@ -1,14 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import DarkModeToggle from './DarkModeToggle';
 import logo from '../assets/logo.png';
 import './Header.css';
 
-const Header = () => {
+const Header = ({ onReset }) => {
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = () => {
+    if (onReset) {
+      setIsResetting(true);
+      
+      // Add a brief delay for the animation
+      setTimeout(() => {
+        onReset();
+        setIsResetting(false);
+      }, 300);
+    }
+  };
+
   return (
     <header className="navbar-header">
       <div className="navbar-left">
         <img src={logo} alt="App Logo" className="navbar-logo" />
-        <span className="navbar-title">Hierarchical DFA Phishing Detector</span>
+        <span 
+          className={`navbar-title clickable ${isResetting ? 'resetting' : ''}`} 
+          onClick={handleReset}
+        >
+          PhishGuard: A Hierarchical DFA-Based Phishing Detection System
+        </span>
       </div>
       <div className="navbar-right">
         <div className="navbar-academic">

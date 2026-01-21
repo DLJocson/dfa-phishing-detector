@@ -92,6 +92,52 @@ body.dark-mode .score-breakdown-title {
   color: #e2e8f0;
 }
 
+/* Risk Level and Classification Labels */
+.risk-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+body.dark-mode .risk-labels {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.risk-label-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.risk-label-text {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+body.dark-mode .risk-label-text {
+  color: #9ca3af;
+}
+
+.risk-label-value {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+body.dark-mode .risk-label-value {
+  background: rgba(0, 0, 0, 0.2);
+}
+
 .breakdown-table {
   width: 100%;
   border-collapse: collapse;
