@@ -10,6 +10,135 @@
   flex-direction: column;
 }
 
+/* Diagnostic Details Container */
+.diagnostic-details-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+}
+
+body.dark-mode .diagnostic-details-container {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.diagnostic-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* Individual Diagnostic Alert Cards */
+.diagnostic-alert-card {
+  background: #f9fafb;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.diagnostic-alert-card:hover {
+  background: #f3f4f6;
+  transform: translateX(2px);
+}
+
+body.dark-mode .diagnostic-alert-card {
+  background: #374151;
+  border-left-color: #60a5fa;
+}
+
+body.dark-mode .diagnostic-alert-card:hover {
+  background: #4b5563;
+}
+
+.diagnostic-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  justify-content: space-between;
+}
+
+.diagnostic-severity-badge {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.diagnostic-check-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: capitalize;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+body.dark-mode .diagnostic-check-name {
+  color: #9ca3af;
+}
+
+.diagnostic-weight-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .diagnostic-weight-indicator {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.weight-label {
+  font-size: 0.7rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+body.dark-mode .weight-label {
+  color: #9ca3af;
+}
+
+.weight-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #374151;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+body.dark-mode .weight-value {
+  color: #e5e7eb;
+}
+
+.diagnostic-alert-message {
+  color: #374151;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+body.dark-mode .diagnostic-alert-message {
+  color: #e5e7eb;
+}
+
 .card-title {
   font-size: 1.1rem;
   font-weight: 700;

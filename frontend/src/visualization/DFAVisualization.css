@@ -1,19 +1,52 @@
+/* =========================================
+   1. MAIN CONTAINER (LAYOUT: CODE 1 | COLORS: CODE 2)
+   ========================================= */
 .dfa-visualization-container {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: none;
-  border: 1px solid #e2e8f0;
+  /* THEME: Glass & Purple Borders from Code 2 */
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 15px 45px -10px rgba(124, 58, 237, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.4);
+  
+  /* LAYOUT: From Code 1 */
+  border-radius: 24px;
+  padding: 32px;
   margin-top: 20px;
+  position: relative;
+  
+  /* ANIMATION: From Code 2 */
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s cubic-bezier(.4,0,.2,1), border-color 0.3s ease;
 }
 
+.dfa-visualization-container:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 35px 70px -15px rgba(124, 58, 237, 0.3);
+  border-color: #fff;
+}
+
+/* DARK MODE: Container Colors from Code 2 */
+body.dark-mode .dfa-visualization-container {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 30px rgba(124, 58, 237, 0.1);
+}
+
+/* =========================================
+   2. HEADER & LAYERS
+   ========================================= */
 .viz-title {
-  margin: 0 0 24px 0;
-  font-size: 20px;
-  font-weight: 600;
+  margin: 0 0 20px 0;
+  font-size: 1.3rem;
+  font-weight: 700;
   color: #1f2937;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid rgba(124, 58, 237, 0.1);
   padding-bottom: 12px;
+}
+
+body.dark-mode .viz-title {
+  color: #f8fafc;
+  text-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
 }
 
 .dfa-layers-viz {
@@ -22,15 +55,10 @@
   gap: 24px;
 }
 
-.dfa-layer-viz {
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
+/* FIXED: Header Layout (Name on Left, Status on Right) */
 .dfa-layer-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* This pushes status to the right */
   align-items: center;
   margin-bottom: 16px;
 }
@@ -42,6 +70,7 @@
   color: #1f2937;
 }
 
+/* Status Label on the Right */
 .layer-status {
   display: flex;
   align-items: center;
@@ -50,18 +79,42 @@
   color: #6b7280;
 }
 
-.status-indicator {
-  font-size: 12px;
+/* INNER PANELS: Purple Gradient from Code 2 */
+.dfa-layer-viz {
+  padding: 16px;
+  border-radius: 12px;
+  animation: layerFade 0.6s ease forwards;
+  animation-delay: calc(var(--layer-index) * 0.15s);
+  opacity: 1; /* Fixed: Start with visible opacity */
+  
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.18),
+    rgba(76, 29, 149, 0.28)
+  );
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.25), inset 0 0 12px rgba(139, 92, 246, 0.15);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
 }
 
-.status-indicator.active {
-  color: #ef4444;
+@keyframes layerFade {
+  from { opacity: 0; transform: translateX(-15px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-.status-indicator.inactive {
-  color: #10b981;
+body.dark-mode .dfa-layer-header h4,
+body.dark-mode .viz-title {
+  color: #f3f4f6;
 }
 
+body.dark-mode .dfa-layer-viz {
+  background: linear-gradient(135deg, rgba(91, 33, 182, 0.35), rgba(15, 0, 30, 0.6));
+  border-color: rgba(167, 139, 250, 0.45);
+}
+
+/* =========================================
+   3. STATES & TRANSITIONS
+   ========================================= */
 .dfa-states {
   display: flex;
   align-items: center;
@@ -79,37 +132,7 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: none;
-}
-
-.dfa-state.initial {
-  background: #e0f2fe;
-  border: 2px solid #0ea5e9;
-}
-
-.dfa-state.accept-safe {
-  background: #dcfce7;
-  border: 2px solid #16a34a;
-}
-
-.dfa-state.accept-triggered {
-  background: #fee2e2;
-  border: 2px solid #dc2626;
-}
-
-.dfa-state.skipped {
-  background: #f1f5f9;
-  border: 2px dashed #94a3b8;
-  opacity: 0.85;
-}
-
-.dfa-state.skipped .state-label {
-  color: #475569;
-}
-
-.state-indicator.skipped {
-  background: #64748b;
-  color: white;
+  transition: all 0.3s cubic-bezier(.4,0,.2,1);
 }
 
 .state-label {
@@ -120,30 +143,39 @@
   text-transform: capitalize;
 }
 
-.state-indicator {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
+body.dark-mode .state-label {
+  color: #1f2937;
+  text-shadow: 0px 1px 3px rgba(255, 255, 255, 0.6);
 }
 
-.state-indicator.triggered {
-  background: #ef4444;
-  color: white;
+.dfa-state.initial {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  border: 2px solid #6366f1;
 }
 
-.state-indicator.safe {
-  background: #10b981;
-  color: white;
+.dfa-state.accept-safe {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
 }
 
+.dfa-state.accept-triggered {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.dfa-state.skipped {
+  background: #f1f5f9;
+  border: 2px dashed #94a3b8;
+  opacity: 0.7;
+}
+
+/* TRANSITION ARROWS */
 .dfa-transition {
   display: flex;
   flex-direction: column;
@@ -165,10 +197,7 @@
   top: 50%;
   left: 0;
   right: 0;
-  margin: 0 auto;
   width: 100%;
-  height: 100%;
-  border-radius: 999px;
   border-top: 2px solid #64748b;
 }
 
@@ -188,19 +217,41 @@
   font-size: 10px;
   color: #6b7280;
   text-align: center;
-  text-transform: capitalize;
   padding: 2px 6px;
   background: white;
   border-radius: 4px;
   border: 1px solid #e5e7eb;
 }
 
+/* =========================================
+   4. INDICATORS & LEGEND
+   ========================================= */
+.state-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.state-indicator.triggered { background: #ef4444; }
+.state-indicator.safe { background: #10b981; }
+.state-indicator.skipped { background: #64748b; }
+
 .legend {
   display: flex;
   gap: 24px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(124, 58, 237, 0.1);
 }
 
 .legend-item {
@@ -208,54 +259,28 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+body.dark-mode .legend-item { color: #cbd5e1; }
+
+/* =========================================
+   5. NO DATA STATE
+   ========================================= */
+.no-data {
+  padding: 40px 24px;
+  text-align: center;
   color: #6b7280;
+  font-size: 16px;
+  background: rgba(243, 244, 246, 0.5);
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin: 20px 0;
 }
 
-.legend-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.legend-icon.safe {
-  background: #10b981;
-  color: white;
-}
-
-.legend-icon.start {
-  background: #0ea5e9;
-  color: white;
-}
-
-.legend-icon.triggered {
-  background: #ef4444;
-  color: white;
-}
-
-.legend-icon.skipped {
-  background: #64748b;
-  color: white;
-}
-
-.results-container,
-.input-bar-container,
-.dfa-visualization-container {
-  background: transparent;
-}
-
-/* flat DFA layers */
-.dfa-layer-viz {
-  padding: 16px;
-  border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #e2e8f0;
-}
-
-body.dark-mode .dfa-layer-viz {
-  background: #12121e;
-  border-color: #2e2e48;
+body.dark-mode .no-data {
+  background: rgba(55, 65, 81, 0.3);
+  color: #9ca3af;
+  border-color: #4b5563;
 }

@@ -48,7 +48,6 @@ const ResultsCard = ({ analysis }) => {
     <div className="results-container fade-in">
       {/* Layer Analysis (collapsible cards) */}
       <div className="layers-container">
-        <h3 className="card-title">DFA Layer Analysis</h3>
         {layers?.map((layer, layerIndex) => {
           const isExpanded = expandedLayers[layerIndex] ?? true;
           // Accent color by layer
@@ -96,6 +95,10 @@ const ResultsCard = ({ analysis }) => {
                         <span className="check-name">
                           {checkName.charAt(0).toUpperCase() + checkName.slice(1)}
                         </span>
+                        <div className="check-weight">
+                          <span className="weight-label">Weight:</span>
+                          <span className="weight-value">{(checkResult.risk_score || 0).toFixed(2)}</span>
+                        </div>
                       </div>
                       {checkResult.triggered && checkResult.reason && (
                         <div className="check-reason">{checkResult.reason}</div>
