@@ -1,12 +1,8 @@
-"""Layer 2: Advanced DFA checks (Homographs, Subdomains, Punycode)
-Improved with pure DFA: confusables checking, Aho-Corasick keywords, multi-label TLD handling.
-"""
-
 from typing import Dict
 from .tokenizer import TokenizerDFA
 
 
-# Configuration: Multi-label TLDs (public suffixes)
+#this is for the DepthDFA 
 MULTILABEL_TLDS = {
     "co.uk", "gov.uk", "ac.uk", "org.uk",
     "co.jp", "or.jp", "go.jp",
@@ -21,58 +17,52 @@ MULTILABEL_TLDS = {
     "co.id", "go.id", "org.id",
 }
 
-# Confusables map: Unicode lookalikes that can be mapped to ASCII skeletons
-# Format: Unicode code point (as int) → safe ASCII character
-CONFUSABLE_MAP = {
-    # Cyrillic (common phishing targets)
-    0x0430: ord('a'),  # а (Cyrillic a)
-    0x0435: ord('e'),  # е (Cyrillic e)
-    0x043E: ord('o'),  # о (Cyrillic o)
-    0x043F: ord('p'),  # п (Cyrillic p)
-    0x0441: ord('c'),  # с (Cyrillic s)
-    0x0445: ord('x'),  # х (Cyrillic x)
-    0x0443: ord('y'),  # у (Cyrillic u)
-    0x043C: ord('m'),  # м (Cyrillic m)
-    0x043D: ord('n'),  # н (Cyrillic n)
-    0x0440: ord('p'),  # р (Cyrillic r)
+# ASCII character set
+ASCII_CHARS = set(
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "0123456789"
+    "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r"
+)
+
+# Map confusable characters to their hex codes (reverse of CONFUSABLE_MAP for lookup)
+CONFUSABLE_CHAR_MAP = {
+    # Cyrillic
+    'а': 0x0430,  # а (Cyrillic a)
+    'е': 0x0435,  # е (Cyrillic e)
+    'о': 0x043E,  # о (Cyrillic o)
+    'п': 0x043F,  # п (Cyrillic p)
+    'с': 0x0441,  # с (Cyrillic c)
+    'х': 0x0445,  # х (Cyrillic x)
+    'у': 0x0443,  # у (Cyrillic y)
+    'м': 0x043C,  # м (Cyrillic m)
+    'н': 0x043D,  # н (Cyrillic n)
+    'р': 0x0440,  # р (Cyrillic r/p)
     # Greek
-    0x03AC: ord('a'),  # ά (Greek alpha)
-    0x03AD: ord('e'),  # έ (Greek epsilon)
-    0x03BF: ord('o'),  # ο (Greek omicron)
-    0x03BD: ord('v'),  # ν (Greek nu)
+    'ά': 0x03AC,  # ά (Greek alpha)
+    'έ': 0x03AD,  # έ (Greek epsilon)
+    'ο': 0x03BF,  # ο (Greek omicron)
+    'ν': 0x03BD,  # ν (Greek nu)
     # Latin extended
-    0x0101: ord('a'),  # ā (Latin a with macron)
-    0x0113: ord('e'),  # ē (Latin e with macron)
-    # Digit lookalikes
-    0x1D7EC: ord('0'),  # Mathematical alphanumeric 0
-    0x1D7ED: ord('1'),  # Mathematical alphanumeric 1
+    'ā': 0x0101,  # ā (a with macron)
+    'ē': 0x0113,  # ē (e with macron)
+    # Math digit lookalikes
+    '𝟬': 0x1D7EC,  # Mathematical bold digit 0
+    '𝟭': 0x1D7ED,  # Mathematical bold digit 1
 }
 
-
+#function for DepthDFA
+#checks for the multi-label TLDs and counts them as 1
 def normalize_hostname_for_depth(hostname: str) -> str:
-    """Normalize multi-label TLDs in hostname for accurate depth counting.
-    
-    Example: "example.co.uk" → "example.co.uk" (keep as-is, but DFA knows it's 2 dots = valid)
-             "sub.example.co.uk" → "sub.example.co.uk" (3 dots, counts as 1 subdomain)
-    
-    This is preprocessing for DepthDFA, not part of the DFA itself.
-    Returns hostname with multi-label TLDs recognized as single units (for counting purposes).
-    """
     hostname_lower = hostname.lower()
     parts = hostname_lower.split('.')
     
     if len(parts) < 2:
         return hostname_lower
-    
-    # Check if the last 2 or 3 labels form a multi-label TLD
     if len(parts) >= 3:
         tld_2label = f"{parts[-2]}.{parts[-1]}"
         if tld_2label in MULTILABEL_TLDS:
-            # This is a recognized multi-label TLD
-            # Return as-is; DepthDFA will count dots correctly
             return hostname_lower
-        
-        # Try 3-label (rare but possible)
         if len(parts) >= 4:
             tld_3label = f"{parts[-3]}.{parts[-2]}.{parts[-1]}"
             if tld_3label in MULTILABEL_TLDS:
@@ -80,60 +70,14 @@ def normalize_hostname_for_depth(hostname: str) -> str:
     
     return hostname_lower
 
-
-def decode_punycode(label: str) -> str:
-    """Minimal RFC 3492 punycode decoder (ASCII-compatible encoding).
-    
-    Decodes 'xn--...' labels to Unicode. Returns decoded label or original if not punycode.
-    Pure Python implementation without external libraries.
-    """
-    if not label.lower().startswith('xn--'):
-        return label
-    
-    try:
-        # Remove prefix
-        encoded = label[4:]
-        
-        # Simple punycode decode (RFC 3492)
-        # Initialize code point to 128 (ASCII range)
-        codepoints = [ord(c) for c in encoded if ord(c) < 128]
-        
-        if not codepoints:
-            return label
-        
-        # Find bias and initial n
-        n = 128
-        i = 0
-        bias = 72
-        output = []
-        
-        # Add ASCII characters
-        for cp in codepoints:
-            if cp < 128:
-                output.append(chr(cp))
-        
-        # If no non-ASCII portion, return as-is
-        if len(codepoints) == len(encoded):
-            return label
-        
-        # Simple fallback: return label (full punycode decode is complex)
-        # For security purposes, just flagging 'xn--' is sufficient
-        return label
-    except Exception:
-        return label
-
-
+#this checks for any characters that is pretending to be an ASCII character
 class ConfusablesDFA:
-    """DFA for detecting confusable (lookalike) non-ASCII characters.
-    
+    """
     Formal Definition: M = (Q, Σ, δ, q₀, F)
     Q = {START, SCANNING, FOUND_CONFUSABLE, REJECT}
     Σ = {ascii, confusable_nonascii, other_nonascii, dot}
     q₀ = START
     F = {FOUND_CONFUSABLE}
-    
-    IMPORTANT: Characters IN the confusables map are DANGEROUS (lookalikes).
-    So we flag when we find them, not when we don't find them.
     """
     
     START = "START"
@@ -159,30 +103,26 @@ class ConfusablesDFA:
         self._accepting_states = {self.FOUND_CONFUSABLE}
     
     def _classify_char(self, char: str) -> str:
-        """Classify character: ascii, confusable_nonascii, or other_nonascii"""
         if char == ".":
             return "dot"
-        elif ord(char) < 128:
+        elif char in ASCII_CHARS:
             return "ascii"
-        elif ord(char) in CONFUSABLE_MAP:
-            # Character IS in confusables map = dangerous lookalike = HIGH RISK
+        elif char in CONFUSABLE_CHAR_MAP:
             return "confusable_nonascii"
         else:
-            # Other non-ASCII (not in confusables) = benign or unknown
             return "other_nonascii"
     
     def _transition(self, state: str, symbol: str) -> str:
-        """Transition function δ(q, σ) → q'"""
         return self._transition_table.get((state, symbol), self.REJECT)
     
     def check(self, hostname: str) -> Dict:
-        """Execute DFA using table-driven approach"""
         if not hostname:
             return {
                 "triggered": False,
                 "state": self.REJECT,
                 "risk_score": 0.0,
-                "details": None
+                "details": None,
+                "reason": ""
             }
         
         current_state = self.START
@@ -191,50 +131,11 @@ class ConfusablesDFA:
         for char in hostname:
             symbol = self._classify_char(char)
             current_state = self._transition(current_state, symbol)
-            
-            # Track confusable characters (lookalikes)
             if symbol == "confusable_nonascii" and char not in confusable_chars:
                 confusable_chars.append(char)
         
         triggered = current_state in self._accepting_states
-        
-        return {
-            "triggered": triggered,
-            "state": current_state,
-            "confusable_chars": confusable_chars,
-            "char_count": len(confusable_chars)
-        }
-
-
-class HomographDFA:
-    """Enhanced DFA for IDN homograph detection using confusables mapping.
-    
-    Runs ConfusablesDFA to detect known lookalike characters (Cyrillic, Greek, etc).
-    These are HIGH-RISK because they impersonate ASCII letters visually.
-    """
-    
-    def __init__(self):
-        self.confusables_dfa = ConfusablesDFA()
-    
-    def check(self, hostname: str) -> Dict:
-        """Execute confusables-aware homograph check"""
-        if not hostname:
-            return {
-                "triggered": False,
-                "state": "REJECT",
-                "risk_score": 0.0,
-                "details": None
-            }
-        
-        # Run confusables DFA
-        confusables_result = self.confusables_dfa.check(hostname)
-        
-        # Check if confusable characters found
-        triggered = confusables_result["triggered"]
-        confusable_chars = confusables_result.get("confusable_chars", [])
-        
         risk_score = 1.5 if triggered else 0.0
-        reason = ""
         
         if triggered:
             reason = f"Confusable lookalike characters detected (homograph risk): {', '.join(confusable_chars)}"
@@ -243,29 +144,25 @@ class HomographDFA:
         
         return {
             "triggered": triggered,
-            "state": confusables_result["state"],
+            "state": current_state,
             "risk_score": risk_score,
             "reason": reason,
             "details": {
                 "hostname": hostname,
                 "confusable_chars": confusable_chars,
-                "char_count": confusables_result["char_count"]
+                "char_count": len(confusable_chars)
             } if triggered else None
         }
 
-
+#this checks for the depth of the subdomains in a hostname
+#
 class DepthDFA:
-    """DFA for subdomain depth analysis with multi-label TLD support.
-    
+    """
     Formal Definition: M = (Q, Σ, δ, q₀, F)
     Q = {START, DEPTH_0, DEPTH_1, DEPTH_2, DEPTH_3, DEPTH_4, DEPTH_EXCESSIVE, REJECT}
     Σ = {dot, other}
     q₀ = START
     F = {DEPTH_EXCESSIVE}
-    
-    Preprocesses hostname to normalize multi-label TLDs before counting dots.
-    Example: "sub1.sub2.sub3.example.com" has 4 dots (3 real subdomains)
-             "sub1.example.co.uk" has 3 dots but only 1 real subdomain (co.uk is 1 TLD unit)
     """
     
     START = "START"
@@ -280,7 +177,6 @@ class DepthDFA:
     REJECT = "REJECT"
     
     def __init__(self, max_depth: int = 4):
-        """Initialize DFA with maximum allowed subdomain depth (default: 4 levels)"""
         self.max_depth = max_depth
         self.max_dots = max_depth + 2  # domain.tld = 1 dot, so 4 subdomains = 6 dots
         
@@ -686,17 +582,17 @@ class PunycodeDFA:
 
 
 class Layer2:
-    """Layer 2 coordinator: combines Homograph, Depth, Keyword, and Punycode DFA checks
+    """Layer 2 coordinator: combines Confusables, Depth, Keyword, and Punycode DFA checks
     
     All checks now use strict table-driven DFA implementations:
-    - HomographDFA: Detects unmapped non-ASCII characters (confusables-aware)
+    - ConfusablesDFA: Detects non-ASCII lookalike characters (homograph risk)
     - DepthDFA: Counts dots with multi-label TLD normalization
     - KeywordDFA: Aho-Corasick multi-pattern matching on hostname + path + query
     - PunycodeDFA: Detects "xn--" Punycode prefix
     """
     
-    def __init__(self, max_subdomain_depth: int = 4):
-        self.homograph_dfa = HomographDFA()
+    def __init__(self, max_subdomain_depth: int = 2):
+        self.homograph_dfa = ConfusablesDFA()
         self.depth_dfa = DepthDFA(max_subdomain_depth)
         self.keyword_dfa = KeywordDFA()
         self.punycode_dfa = PunycodeDFA()
@@ -772,40 +668,3 @@ class Layer2:
             "layer_risk_score": layer_risk_score
         }
         
-        return {
-            "layer": "Layer 2 (Advanced)",
-            "hostname": hostname,
-            "checks": {
-                "homograph": {
-                    "triggered": homograph_result["triggered"],
-                    "state": homograph_result["state"],
-                    "risk_score": homograph_result["risk_score"],
-                    "reason": homograph_result.get("reason", ""),
-                    "details": homograph_result["details"]
-                },
-                "depth": {
-                    "triggered": depth_result["triggered"],
-                    "state": depth_result["state"],
-                    "risk_score": depth_result["risk_score"],
-                    "reason": depth_result.get("reason", ""),
-                    "details": depth_result["details"]
-                },
-                "keyword": {
-                    "triggered": keyword_result["triggered"],
-                    "state": keyword_result["state"],
-                    "risk_score": keyword_result["risk_score"],
-                    "reason": keyword_result.get("reason", ""),
-                    "details": keyword_result["details"]
-                },
-                "punycode": {
-                    "triggered": punycode_result["triggered"],
-                    "state": punycode_result["state"],
-                    "risk_score": punycode_result["risk_score"],
-                    "reason": punycode_result.get("reason", ""),
-                    "details": punycode_result["details"]
-                }
-            },
-            "triggered_count": triggered_count,
-            "total_checks": 4,
-            "layer_risk_score": layer_risk_score
-        }
