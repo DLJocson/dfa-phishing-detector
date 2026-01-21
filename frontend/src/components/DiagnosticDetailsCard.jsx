@@ -82,7 +82,7 @@ const DiagnosticDetailsCard = ({ analysis }) => {
       
       <div className="total-score">
         <div className="total-score-label">Total Threat Score</div>
-        <div className="total-score-value">{totalThreatScore.toFixed(2)} / 100</div>
+        <div className="total-score-value">{totalThreatScore.toFixed(2)} / 18.40</div>
       </div>
     </div>
   );
