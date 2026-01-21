@@ -1,0 +1,34 @@
+.dark-mode-toggle {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark-mode-toggle:hover {
+  background-color: #e5e7eb;
+}
+
+body.dark-mode .dark-mode-toggle:hover {
+  background-color: #374151;
+}
+
+.dark-mode-toggle .icon {
+  display: inline-block;
+  transition: transform 0.4s cubic-bezier(.4,0,.2,1), color 0.25s cubic-bezier(.4,0,.2,1);
+}
+
+.dark-mode-toggle:active .icon {
+  transform: rotate(-20deg) scale(0.92);
+}
+
+body,
+body.dark-mode {
+  transition: background 0.25s cubic-bezier(.4,0,.2,1), color 0.25s cubic-bezier(.4,0,.2,1);
+}

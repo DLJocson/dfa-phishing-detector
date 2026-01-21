@@ -16,9 +16,15 @@ const DFAVisualization = ({ analysis }) => {
   const renderLayerStates = (layer, layerIndex) => {
     const checks = Object.entries(layer.checks || {});
     const triggeredChecks = checks.filter(([_, check]) => check.triggered);
+    const firstTriggeredIndex = checks.findIndex(([_, check]) => check?.triggered);
     
     return (
-      <div key={layerIndex} className="dfa-layer-viz">
+      <div
+  key={layerIndex}
+  className="dfa-layer-viz"
+  style={{ "--layer-index": layerIndex }}
+>
+
         <div className="dfa-layer-header">
           <h4>{layer.layer}</h4>
           <div className="layer-status">
@@ -34,23 +40,36 @@ const DFAVisualization = ({ analysis }) => {
             <div className="state-label">Start</div>
           </div>
           
-          {checks.map(([checkName, checkResult], checkIndex) => (
+          {checks.map(([checkName, checkResult], checkIndex) => {
+            // Visualization-only: if a threat triggers, subsequent checks appear "skipped"
+            const isSkipped = firstTriggeredIndex >= 0 && checkIndex > firstTriggeredIndex;
+            const stateClass = isSkipped
+              ? 'skipped'
+              : checkResult.triggered
+                ? 'accept-triggered'
+                : 'accept-safe';
+
+            return (
             <React.Fragment key={checkIndex}>
               <div className="dfa-transition">
                 <div className="transition-line"></div>
                 <div className="transition-label">{checkName}</div>
               </div>
-              <div className={`dfa-state ${checkResult.triggered ? 'accept-triggered' : 'accept-safe'}`}>
+              <div className={`dfa-state ${stateClass}`}>
                 <div className="state-label">{checkName}</div>
-                {checkResult.triggered && (
+                {!isSkipped && checkResult.triggered && (
                   <div className="state-indicator triggered">⚠</div>
                 )}
-                {!checkResult.triggered && (
+                {!isSkipped && !checkResult.triggered && (
                   <div className="state-indicator safe">✓</div>
+                )}
+                {isSkipped && (
+                  <div className="state-indicator skipped">↷</div>
                 )}
               </div>
             </React.Fragment>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -65,12 +84,20 @@ const DFAVisualization = ({ analysis }) => {
       
       <div className="legend">
         <div className="legend-item">
+          <span className="legend-icon start">●</span>
+          <span>Start</span>
+        </div>
+        <div className="legend-item">
           <span className="legend-icon safe">✓</span>
           <span>Safe Check Passed</span>
         </div>
         <div className="legend-item">
           <span className="legend-icon triggered">⚠</span>
           <span>Threat Detected</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-icon skipped">↷</span>
+          <span>Skipped</span>
         </div>
       </div>
     </div>

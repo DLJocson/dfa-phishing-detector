@@ -1,0 +1,108 @@
+.navbar-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-bottom: 1.5px solid #e5e7eb;
+  padding: 0.75rem 1.5rem; /* py-3 px-6 */
+  min-height: 56px;
+  z-index: 10;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navbar-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  margin-right: 0.5rem;
+}
+
+.navbar-title {
+  font-weight: 700;
+  font-size: 1.18rem;
+  color: #1e293b;
+  letter-spacing: 0.01em;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.navbar-academic {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 1rem;
+}
+
+.navbar-course {
+  font-size: 0.93rem;
+  color: #6b7280;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.navbar-course-full {
+  display: inline;
+}
+
+.navbar-course-short {
+  display: none;
+}
+
+.navbar-year {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.navbar-divider {
+  width: 1px;
+  height: 32px;
+  background: #e5e7eb;
+  margin-right: 1.25rem;
+  margin-left: 0.25rem;
+}
+
+@media (max-width: 600px) {
+  .navbar-header {
+    padding: 0.5rem 0.75rem;
+  }
+  .navbar-title {
+    font-size: 1rem;
+  }
+  .navbar-academic {
+    margin-right: 0.5rem;
+  }
+  .navbar-course-full {
+    display: none;
+  }
+  .navbar-course-short {
+    display: inline;
+  }
+}
+
+body.dark-mode .navbar-header {
+  background: #0f172a;
+  border-bottom: 1.5px solid #334155;
+}
+body.dark-mode .navbar-title {
+  color: #f1f5f9;
+}
+body.dark-mode .navbar-course {
+  color: #cbd5e1;
+}
+body.dark-mode .navbar-year {
+  color: #64748b;
+}
+body.dark-mode .navbar-divider {
+  background: #334155;
+}

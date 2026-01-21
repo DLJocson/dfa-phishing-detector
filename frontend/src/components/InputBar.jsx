@@ -1,10 +1,8 @@
 /**
- * Input Bar Component: URL input form with example URLs for testing
+ * Input Bar Component: URL input form with Quick Action Chips
  */
-
 import React, { useState } from 'react';
 import './InputBar.css';
-
 
 const InputBar = ({ onAnalyze, isLoading }) => {
   const [url, setUrl] = useState('');
@@ -16,9 +14,10 @@ const InputBar = ({ onAnalyze, isLoading }) => {
     }
   };
 
-  const handleExampleClick = (exampleUrl) => {
-    setUrl(exampleUrl);
-    onAnalyze(exampleUrl);
+  const handleChipClick = (value) => {
+    setUrl(value);
+    // Optional: Auto-analyze on click
+    // onAnalyze(value); 
   };
 
   const exampleUrls = {
@@ -36,53 +35,67 @@ const InputBar = ({ onAnalyze, isLoading }) => {
 
   return (
     <div className="input-bar-container">
-      <form onSubmit={handleSubmit} className="input-form">
-        <div className="input-wrapper">
-          <input
-            type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter URL to analyze..."
-            className="url-input"
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            className="analyze-button"
-            disabled={isLoading || !url.trim()}
-          >
-            {isLoading ? 'Analyzing...' : 'Analyze'}
-          </button>
-        </div>
-      </form>
-      
-      <div className="examples-section">
-        <div className="examples-group">
-          <span className="examples-label">Try suspicious URLs:</span>
-          <div className="example-buttons">
-            {exampleUrls.suspicious.map((example, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleExampleClick(example)}
-                className="example-button suspicious"
+      {/* WRAPPER CARD */}
+      <div className="input-card">
+        <h3 className="card-title">URL Insertion</h3>
+        
+        <form onSubmit={handleSubmit} className="input-form">
+          <div className="input-wrapper">
+            <input
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Enter URL to analyze..."
+              className="url-input"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              className={`analyze-button${isLoading ? ' loading' : ''}`}
+              disabled={isLoading || !url.trim()}
+              aria-busy={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <span className="spinner" aria-hidden="true"></span>
+                  Analyzing...
+                </>
+              ) : 'Analyze'}
+            </button>
+          </div>
+        </form>
+
+        {/* NEW: Action Chips Section */}
+        <div className="quick-action-section">
+          <span className="action-label">Quick Load:</span>
+          
+          <div className="chips-container">
+            {/* Suspicious Chips */}
+            {exampleUrls.suspicious.map((exUrl, idx) => (
+              <button 
+                key={`sus-${idx}`}
+                onClick={() => handleChipClick(exUrl)}
+                className="action-chip chip-suspicious"
+                type="button"
                 disabled={isLoading}
               >
-                {example}
+                Phish Ex {idx + 1}
               </button>
             ))}
-          </div>
-        </div>
-        <div className="examples-group">
-          <span className="examples-label">Try benign URLs:</span>
-          <div className="example-buttons">
-            {exampleUrls.benign.map((example, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleExampleClick(example)}
-                className="example-button benign"
+
+            {/* Separator */}
+            <div className="chip-separator"></div>
+
+            {/* Benign Chips */}
+            {exampleUrls.benign.map((exUrl, idx) => (
+              <button 
+                key={`ben-${idx}`}
+                onClick={() => handleChipClick(exUrl)}
+                className="action-chip chip-benign"
+                type="button"
                 disabled={isLoading}
               >
-                {example}
+                Safe Ex {idx + 1}
               </button>
             ))}
           </div>

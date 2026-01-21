@@ -568,13 +568,414 @@ class RedirectDFA:
         }
 
 
+class EncodedProtocolDFA:
+    """
+    Pure DFA for detecting percent-encoded embedded protocols.
+    Detects patterns like %68%74%74%70 (encoded "http") and %3A%2F%2F (encoded "://").
+    Uses explicit HEX parsing with state-based tracking.
+    """
+    
+    START = "START"
+    P = "P"
+    # http sequence: %68%74%74%70
+    H6 = "H6"
+    H68 = "H68"
+    H68P = "H68P"
+    T7 = "T7"
+    T74 = "T74"
+    T74P = "T74P"
+    T27 = "T27"
+    T274 = "T274"
+    T274P = "T274P"
+    P7 = "P7"
+    P70 = "P70"
+    # :// sequence: %3A%2F%2F
+    HTTP = "HTTP"
+    HTTPP = "HTTPP"
+    C3 = "C3"
+    C3A = "C3A"
+    C3AP = "C3AP"
+    S2 = "S2"
+    S2F = "S2F"
+    S2FP = "S2FP"
+    S22 = "S22"
+    S22F = "S22F"
+    FOUND = "FOUND"
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    
+    def __init__(self):
+        self._build_transition_table()
+    
+    def _build_transition_table(self):
+        self._transitions = {
+            self.START: {"%": self.P},
+            self.P: {"6": self.H6, "3": self.C3, "2": self.S2},
+            # http = %68%74%74%70
+            self.H6: {"8": self.H68},
+            self.H68: {"%": self.H68P},
+            self.H68P: {"7": self.T7},
+            self.T7: {"4": self.T74},
+            self.T74: {"%": self.T74P},
+            self.T74P: {"7": self.T27},
+            self.T27: {"4": self.T274},
+            self.T274: {"%": self.T274P},
+            self.T274P: {"7": self.P7},
+            self.P7: {"0": self.P70},
+            self.P70: {"%": self.HTTPP},
+            # After http, scan for :// = %3A%2F%2F
+            self.HTTPP: {"3": self.C3},
+            self.C3: {"a": self.C3A, "A": self.C3A},
+            self.C3A: {"%": self.C3AP},
+            self.C3AP: {"2": self.S2},
+            self.S2: {"f": self.S2F, "F": self.S2F},
+            self.S2F: {"%": self.S2FP},
+            self.S2FP: {"2": self.S22},
+            self.S22: {"f": self.S22F, "F": self.S22F},
+            self.S22F: {},
+        }
+    
+    def _transition(self, state: str, char: str) -> str:
+        if state not in self._transitions:
+            return self.START
+        return self._transitions[state].get(char, self.START)
+    
+    def check(self, query: str) -> Dict:
+        if not query:
+            return {
+                "triggered": False,
+                "state": self.REJECT,
+                "risk_score": 0.0,
+                "reason": "No query parameters to analyze",
+                "details": None
+            }
+        state = self.START
+        for char in query:
+            state = self._transition(state, char)
+            if state == self.S22F:
+                state = self.FOUND
+                break
+        triggered = state == self.FOUND
+        return {
+            "triggered": triggered,
+            "state": state,
+            "risk_score": 2.5 if triggered else 0.0,
+            "reason": "Percent-encoded protocol detected in query parameters - possible embedded malicious URL" if triggered else "No encoded protocols detected",
+            "details": {
+                "query": query,
+                "pattern_detected": "Percent-encoded http:// or similar protocol",
+                "warning": "Encoded protocol detected - possible URL injection attack"
+            } if triggered else None
+        }
+
+
+class FragmentRedirectDFA:
+    """Pure DFA for detecting fragment-based redirects (#// or #/http)."""
+    START = "START"
+    FOUND_HASH = "FOUND_HASH"
+    FOUND_SLASH = "FOUND_SLASH"
+    FOUND_DOUBLE_SLASH = "FOUND_DOUBLE_SLASH"
+    FOUND_H = "FOUND_H"
+    FOUND_T = "FOUND_T"
+    FOUND_T2 = "FOUND_T2"
+    FOUND_P = "FOUND_P"
+    FOUND_HTTP = "FOUND_HTTP"
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    
+    def __init__(self):
+        self._build_transition_table()
+    
+    def _build_transition_table(self):
+        self._transitions = {
+            self.START: {"#": self.FOUND_HASH, "other": self.START},
+            self.FOUND_HASH: {"/": self.FOUND_SLASH, "h": self.FOUND_H, "other": self.START},
+            self.FOUND_SLASH: {"/": self.FOUND_DOUBLE_SLASH, "h": self.FOUND_H, "other": self.START},
+            self.FOUND_DOUBLE_SLASH: {"other": self.FOUND_DOUBLE_SLASH},
+            self.FOUND_H: {"t": self.FOUND_T, "other": self.START},
+            self.FOUND_T: {"t": self.FOUND_T2, "other": self.START},
+            self.FOUND_T2: {"p": self.FOUND_P, "other": self.START},
+            self.FOUND_P: {":": self.FOUND_HTTP, "other": self.START},
+            self.FOUND_HTTP: {"other": self.FOUND_HTTP},
+        }
+    
+    def _transition(self, state: str, char: str) -> str:
+        if state not in self._transitions:
+            return self.REJECT
+        char_lower = char.lower()
+        if char_lower in self._transitions[state]:
+            return self._transitions[state][char_lower]
+        if "other" in self._transitions[state]:
+            return self._transitions[state]["other"]
+        return self.REJECT
+    
+    def check(self, fragment: str) -> Dict:
+        if not fragment:
+            return {
+                "triggered": False,
+                "state": self.REJECT,
+                "risk_score": 0.0,
+                "reason": "No fragment to analyze",
+                "details": None
+            }
+        state = self.START
+        for char in fragment:
+            state = self._transition(state, char)
+        triggered = state in [self.FOUND_DOUBLE_SLASH, self.FOUND_HTTP]
+        return {
+            "triggered": triggered,
+            "state": state,
+            "risk_score": 1.5 if triggered else 0.0,
+            "reason": "Fragment-based redirect detected - possible client-side redirect attack" if triggered else "No fragment redirects detected",
+            "details": {
+                "fragment": fragment,
+                "pattern_detected": "#// or #/http:// detected",
+                "warning": "Fragment redirect detected - possible client-side redirect vulnerability"
+            } if triggered else None
+        }
+
+
+class ShortenerDFA:
+    """Pure DFA for detecting URL shortener domains using trie."""
+    START = "START"
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    
+    def __init__(self):
+        self.shortener_domains = ["bit.ly", "tinyurl.com", "t.co", "is.gd"]
+        self._build_trie()
+    
+    def _build_trie(self):
+        self._transitions = {}
+        self._accepting_states = set()
+        trie = {}
+        for domain in self.shortener_domains:
+            node = trie
+            for char in domain.lower():
+                if char not in node:
+                    node[char] = {}
+                node = node[char]
+            node['$END'] = True
+        def trie_to_dfa(node, state_prefix):
+            if state_prefix not in self._transitions:
+                self._transitions[state_prefix] = {}
+            if '$END' in node:
+                self._accepting_states.add(state_prefix)
+            for char, next_node in node.items():
+                if char != '$END':
+                    next_state = f"{state_prefix}/{char}"
+                    self._transitions[state_prefix][char] = next_state
+                    trie_to_dfa(next_node, next_state)
+        trie_to_dfa(trie, self.START)
+    
+    def _transition(self, state: str, char: str) -> str:
+        if state not in self._transitions:
+            return self.REJECT
+        return self._transitions[state].get(char.lower(), self.REJECT)
+    
+    def check(self, hostname: str) -> Dict:
+        if not hostname:
+            return {
+                "triggered": False,
+                "state": self.REJECT,
+                "risk_score": 0.0,
+                "reason": "No hostname to analyze",
+                "details": None
+            }
+        state = self.START
+        for char in hostname:
+            state = self._transition(state, char)
+            if state == self.REJECT:
+                break
+        triggered = state in self._accepting_states
+        return {
+            "triggered": triggered,
+            "state": state,
+            "risk_score": 2.0 if triggered else 0.0,
+            "reason": f"URL shortener domain detected: {hostname} - possible link obfuscation" if triggered else "No URL shortener detected",
+            "details": {
+                "hostname": hostname,
+                "shortener_detected": hostname if triggered else None,
+                "warning": "URL shortener detected - destination may be obfuscated"
+            } if triggered else None
+        }
+
+
+class CredentialPathDFA:
+    """Pure DFA for detecting credential-harvesting paths."""
+    START = "START"
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    
+    def __init__(self):
+        self.keywords = ["login", "verify", "update", "auth", "session"]
+        self._build_trie()
+    
+    def _build_trie(self):
+        self._transitions = {}
+        self._accepting_states = set()
+        trie = {}
+        for keyword in self.keywords:
+            node = trie
+            for char in keyword.lower():
+                if char not in node:
+                    node[char] = {}
+                node = node[char]
+            node['$END'] = keyword
+        def trie_to_dfa(node, state_prefix):
+            if state_prefix not in self._transitions:
+                self._transitions[state_prefix] = {}
+            if '$END' in node:
+                self._accepting_states.add(state_prefix)
+            for char, next_node in node.items():
+                if char != '$END':
+                    next_state = f"{state_prefix}/{char}"
+                    self._transitions[state_prefix][char] = next_state
+                    trie_to_dfa(next_node, next_state)
+            self._transitions[state_prefix]["/"] = self.START
+        trie_to_dfa(trie, self.START)
+    
+    def _transition(self, state: str, char: str) -> str:
+        if state not in self._transitions:
+            return self.REJECT
+        char_lower = char.lower()
+        if char_lower in self._transitions[state]:
+            return self._transitions[state][char_lower]
+        if char == "/":
+            return self.START
+        if not char.isalpha():
+            return self.START
+        return self.REJECT
+    
+    def check(self, path: str) -> Dict:
+        if not path:
+            return {
+                "triggered": False,
+                "state": self.REJECT,
+                "risk_score": 0.0,
+                "reason": "No path to analyze",
+                "details": None
+            }
+        state = self.START
+        detected_keywords = []
+        current_match = ""
+        for char in path:
+            state = self._transition(state, char)
+            if char.isalpha():
+                current_match += char.lower()
+            elif char == "/":
+                if current_match in self.keywords and current_match not in detected_keywords:
+                    detected_keywords.append(current_match)
+                current_match = ""
+        if current_match:
+            for keyword in self.keywords:
+                if current_match == keyword.lower() and keyword not in detected_keywords:
+                    detected_keywords.append(keyword)
+        triggered = len(detected_keywords) > 0
+        return {
+            "triggered": triggered,
+            "state": state,
+            "risk_score": 1.2 if triggered else 0.0,
+            "reason": f"Credential harvesting path detected: {', '.join(detected_keywords)}" if triggered else "No credential harvesting paths detected",
+            "details": {
+                "path": path,
+                "keywords_detected": detected_keywords,
+                "warning": "Credential harvesting path detected - possible phishing attempt"
+            } if triggered else None
+        }
+
+
+class SuspiciousTLDDFA:
+    """Pure DFA for detecting suspicious top-level domains."""
+    START = "START"
+    DOT = "DOT"
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    
+    def __init__(self):
+        self.suspicious_tlds = [".xyz", ".tk", ".top", ".ru", ".cn"]
+        self._build_trie()
+    
+    def _build_trie(self):
+        self._transitions = {}
+        self._accepting_states = set()
+        trie = {}
+        for tld in self.suspicious_tlds:
+            node = trie
+            for char in tld.lower():
+                if char not in node:
+                    node[char] = {}
+                node = node[char]
+            node['$END'] = tld
+        def trie_to_dfa(node, state_prefix):
+            if state_prefix not in self._transitions:
+                self._transitions[state_prefix] = {}
+            if '$END' in node:
+                self._accepting_states.add(state_prefix)
+            for char, next_node in node.items():
+                if char != '$END':
+                    next_state = f"{state_prefix}{char}"
+                    self._transitions[state_prefix][char] = next_state
+                    trie_to_dfa(next_node, next_state)
+        trie_to_dfa(trie, self.START)
+        for state in list(self._transitions.keys()):
+            if "." not in self._transitions[state]:
+                self._transitions[state]["."] = self.START + "."
+    
+    def _transition(self, state: str, char: str) -> str:
+        if state not in self._transitions:
+            return self.START if char == "." else self.REJECT
+        char_lower = char.lower()
+        if char_lower in self._transitions[state]:
+            return self._transitions[state][char_lower]
+        if char == ".":
+            return self.START + "."
+        return self.START
+    
+    def check(self, hostname: str) -> Dict:
+        if not hostname:
+            return {
+                "triggered": False,
+                "state": self.REJECT,
+                "risk_score": 0.0,
+                "reason": "No hostname to analyze",
+                "details": None
+            }
+        state = self.START
+        detected_tld = None
+        for char in hostname:
+            state = self._transition(state, char)
+        if state in self._accepting_states:
+            for tld in self.suspicious_tlds:
+                if tld.lower() in state.lower():
+                    detected_tld = tld
+                    break
+        triggered = state in self._accepting_states
+        return {
+            "triggered": triggered,
+            "state": state,
+            "risk_score": 1.0 if triggered else 0.0,
+            "reason": f"Suspicious TLD detected: {detected_tld}" if triggered else "No suspicious TLD detected",
+            "details": {
+                "hostname": hostname,
+                "tld_detected": detected_tld,
+                "warning": "Suspicious TLD detected - commonly associated with malicious domains"
+            } if triggered else None
+        }
+
+
 class Layer3:
-    """Layer 3 coordinator: combines Chained, Dynamic, and Redirect DFA checks"""
+    """Layer 3 coordinator: combines all DFA threat detection checks"""
     
     def __init__(self):
         self.chained_dfa = ChainedDFA()
         self.dynamic_dfa = DynamicDFA()
         self.redirect_dfa = RedirectDFA()
+        self.encoded_protocol_dfa = EncodedProtocolDFA()
+        self.fragment_redirect_dfa = FragmentRedirectDFA()
+        self.shortener_dfa = ShortenerDFA()
+        self.credential_path_dfa = CredentialPathDFA()
+        self.suspicious_tld_dfa = SuspiciousTLDDFA()
         self.tokenizer = TokenizerDFA()
     
     def analyze(self, url: str) -> Dict:
@@ -584,21 +985,37 @@ class Layer3:
         query = tokens.get("query", "")
         path = tokens.get("path", "")
         hostname = tokens.get("hostname", "")
+        fragment = tokens.get("fragment", "")
         
         chained_result = self.chained_dfa.check(query, path)
         dynamic_result = self.dynamic_dfa.check(hostname, query)
         redirect_result = self.redirect_dfa.check(query)
+        encoded_protocol_result = self.encoded_protocol_dfa.check(query)
+        fragment_redirect_result = self.fragment_redirect_dfa.check(fragment)
+        shortener_result = self.shortener_dfa.check(hostname)
+        credential_path_result = self.credential_path_dfa.check(path)
+        suspicious_tld_result = self.suspicious_tld_dfa.check(hostname)
         
         triggered_count = sum([
             1 if chained_result["triggered"] else 0,
             1 if dynamic_result["triggered"] else 0,
             1 if redirect_result["triggered"] else 0,
+            1 if encoded_protocol_result["triggered"] else 0,
+            1 if fragment_redirect_result["triggered"] else 0,
+            1 if shortener_result["triggered"] else 0,
+            1 if credential_path_result["triggered"] else 0,
+            1 if suspicious_tld_result["triggered"] else 0,
         ])
         
         layer_risk_score = (
             chained_result["risk_score"] +
             dynamic_result["risk_score"] +
-            redirect_result["risk_score"]
+            redirect_result["risk_score"] +
+            encoded_protocol_result["risk_score"] +
+            fragment_redirect_result["risk_score"] +
+            shortener_result["risk_score"] +
+            credential_path_result["risk_score"] +
+            suspicious_tld_result["risk_score"]
         )
         
         return {
@@ -606,6 +1023,7 @@ class Layer3:
             "query": query,
             "path": path,
             "hostname": hostname,
+            "fragment": fragment,
             "checks": {
                 "chained": {
                     "triggered": chained_result["triggered"],
@@ -627,9 +1045,44 @@ class Layer3:
                     "risk_score": redirect_result["risk_score"],
                     "reason": redirect_result.get("reason", ""),
                     "details": redirect_result["details"]
+                },
+                "encoded_protocol": {
+                    "triggered": encoded_protocol_result["triggered"],
+                    "state": encoded_protocol_result["state"],
+                    "risk_score": encoded_protocol_result["risk_score"],
+                    "reason": encoded_protocol_result.get("reason", ""),
+                    "details": encoded_protocol_result["details"]
+                },
+                "fragment_redirect": {
+                    "triggered": fragment_redirect_result["triggered"],
+                    "state": fragment_redirect_result["state"],
+                    "risk_score": fragment_redirect_result["risk_score"],
+                    "reason": fragment_redirect_result.get("reason", ""),
+                    "details": fragment_redirect_result["details"]
+                },
+                "shortener": {
+                    "triggered": shortener_result["triggered"],
+                    "state": shortener_result["state"],
+                    "risk_score": shortener_result["risk_score"],
+                    "reason": shortener_result.get("reason", ""),
+                    "details": shortener_result["details"]
+                },
+                "credential_path": {
+                    "triggered": credential_path_result["triggered"],
+                    "state": credential_path_result["state"],
+                    "risk_score": credential_path_result["risk_score"],
+                    "reason": credential_path_result.get("reason", ""),
+                    "details": credential_path_result["details"]
+                },
+                "suspicious_tld": {
+                    "triggered": suspicious_tld_result["triggered"],
+                    "state": suspicious_tld_result["state"],
+                    "risk_score": suspicious_tld_result["risk_score"],
+                    "reason": suspicious_tld_result.get("reason", ""),
+                    "details": suspicious_tld_result["details"]
                 }
             },
             "triggered_count": triggered_count,
-            "total_checks": 3,
+            "total_checks": 8,
             "layer_risk_score": layer_risk_score
         }

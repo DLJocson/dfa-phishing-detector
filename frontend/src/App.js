@@ -9,6 +9,11 @@ import './App.css';
 import InputBar from './components/InputBar';
 import ResultsCard from './components/ResultsCard';
 import DFAVisualization from './visualization/DFAVisualization';
+import Header from './components/Header';
+import RiskSummaryCard from './components/RiskSummaryCard';
+import UrlComponentsCard from './components/UrlComponentsCard';
+import logo from './assets/logo.png';
+
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -47,63 +52,57 @@ function App() {
     }
   };
 
+
   return (
     <div className="App">
-      <header className="app-header">
-        <div className="header-content">
-          <h1 className="app-title">
-            <span className="title-icon">🔒</span>
-            Hierarchical DFA-Based Phishing URL Detector
-          </h1>
-          <p className="app-subtitle">
-            Multi-layer deterministic finite automata for accurate phishing detection
-          </p>
-        </div>
-      </header>
+      <Header />
 
       <main className="app-main">
+    {/* additional - 2 Panels */}
+    <div className="card-panels">
+      {/* Left Panel: URL input, Risk, URL Components */}
+      <div className="left-panel flex flex-col gap-6 p-6">
         <InputBar onAnalyze={handleAnalyze} isLoading={isLoading} />
-
-        {error && (
-          <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
-
         {analysis && (
           <>
-            <ResultsCard analysis={analysis} />
-            <DFAVisualization analysis={analysis} />
+            <div className="w-full">
+              <RiskSummaryCard analysis={analysis} />
+            </div>
+            <div className="w-full">
+              <UrlComponentsCard analysis={analysis} />
+            </div>
           </>
         )}
+      </div>
 
-        {!analysis && !isLoading && !error && (
-          <div className="welcome-message">
-            <div className="welcome-icon">🛡️</div>
-            <h2>Welcome to the Phishing URL Detector</h2>
-            <p>
-              Enter a URL above to analyze it using our hierarchical DFA system.
-              The system will check for suspicious patterns across multiple layers
-              and provide a comprehensive risk assessment.
-            </p>
-            <div className="features-list">
-              <div className="feature-item">
-                <span className="feature-icon">✓</span>
-                <span>Layer 1: Basic checks (Length, Schema, TLD)</span>
-              </div>
-              <div className="feature-item">
-                <span className="feature-icon">✓</span>
-                <span>Layer 2: Advanced checks (Homographs, Subdomain, Punycode)</span>
-              </div>
-              <div className="feature-item">
-                <span className="feature-icon">✓</span>
-                <span>Layer 3: Threat checks (Chained URLs, Dynamic patterns, Redirects)</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
+      {/* Right Panel: DFA Layer Analysis */}
+      <div className="card-panel">
+      {error && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          <span>{error}</span>
+        </div>
+      )}
+
+      {analysis ? (
+        <ResultsCard analysis={analysis} />
+      ) : (
+        <div className="placeholder">
+          <h3>Layer Analysis</h3>
+          <p>Run an analysis to see which DFA checks triggered per layer.</p>
+        </div>
+      )}
+    </div>
+
+    </div>
+
+    {/* additional - DFA viz below */}
+    {analysis && (
+      <div className="dfa-panel">
+        <DFAVisualization analysis={analysis} />
+      </div>
+    )}
+  </main>
 
       <footer className="app-footer">
         <p>
