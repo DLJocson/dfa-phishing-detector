@@ -23,18 +23,18 @@ const ResultsCard = ({ analysis }) => {
     }));
   };
 
-  // Icon map for check types
+  // Icon map for check types (emojis removed for a cleaner presentation)
   const checkIcons = {
-    length: '📏',
-    schema: '🌐',
-    tld: '🗺️',
-    homograph: '🔀',
-    subdomain: '🏷️',
-    punycode: '🔡',
-    chained: '⛓️',
-    dynamic: '⚡',
-    redirect: '➡️',
-    default: '✔️',
+    length: '',
+    schema: '',
+    tld: '',
+    homograph: '',
+    subdomain: '',
+    punycode: '',
+    chained: '',
+    dynamic: '',
+    redirect: '',
+    default: '',
   };
 
   const getCheckIcon = (checkName, triggered) => {
