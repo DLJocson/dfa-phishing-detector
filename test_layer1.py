@@ -1219,19 +1219,19 @@ class Layer1:
         total_risk_score = 0.0
 
         try:
-            length_risk = length_result["risk_score"]
+            length_risk = length_check["risk_score"]
         except KeyError:
             length_risk = 0.0
         total_risk_score = total_risk_score + length_risk
 
         try:
-            schema_risk = schema_result["risk_score"]
+            schema_risk = schema_check["risk_score"]
         except KeyError:
             schema_risk = 0.0
         total_risk_score = total_risk_score + schema_risk
 
         try:
-            tld_risk = tld_result["risk_score"]
+            tld_risk = tld_check["risk_score"]
         except KeyError:
             tld_risk = 0.0
         total_risk_score = total_risk_score + tld_risk
