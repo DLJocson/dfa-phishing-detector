@@ -2,7 +2,7 @@ from typing import Dict
 from .tokenizer import TokenizerDFA
 
 
-#this is for the DepthDFA 
+#this is the set of known multi-label tlds
 MULTILABEL_TLDS = {
     "co.uk", "gov.uk", "ac.uk", "org.uk",
     "co.jp", "or.jp", "go.jp",
@@ -155,7 +155,7 @@ class ConfusablesDFA:
         }
 
 #this checks for the depth of the subdomains in a hostname
-#
+#it triggers when the dots are more than 3
 class DepthDFA:
     """
     Formal Definition: M = (Q, Σ, δ, q₀, F)
@@ -176,11 +176,10 @@ class DepthDFA:
     DEPTH_EXCESSIVE = "DEPTH_EXCESSIVE"
     REJECT = "REJECT"
     
-    def __init__(self, max_depth: int = 4):
+    def __init__(self, max_depth: int = 2):
         self.max_depth = max_depth
-        self.max_dots = max_depth + 2  # domain.tld = 1 dot, so 4 subdomains = 6 dots
+        self.max_dots = max_depth + 2  
         
-        # Transition table δ: Q × Σ → Q
         self._transition_table = {
             (self.START, "dot"): self.DEPTH_1,
             (self.START, "other"): self.DEPTH_0,
@@ -229,22 +228,17 @@ class DepthDFA:
                 "risk_score": 0.0,
                 "details": None
             }
-        
-        # Normalize hostname for multi-label TLDs (preprocessing)
+        #calls the function for multi-label TLDs
         normalized_hostname = normalize_hostname_for_depth(hostname)
         
-        # Standard DFA execution loop
         current_state = self.START
         
         for char in normalized_hostname:
             symbol = self._classify_char(char)
             current_state = self._transition(current_state, symbol)
         
-        # Check if final state is accepting
         dot_count = self._get_dot_count(current_state)
-        subdomain_levels = max(0, dot_count - 1)  # Subtract 1 for domain.tld
-        
-        # Trigger if subdomain levels exceed max_depth
+        subdomain_levels = max(0, dot_count - 1) 
         triggered = subdomain_levels > self.max_depth
         
         return {
@@ -266,18 +260,14 @@ class DepthDFA:
             }
         }
 
-
+#this trie-based dfa detects suspicious keywords in the url
 class KeywordDFA:
-    """Aho-Corasick style DFA for multi-pattern keyword matching.
-    
-    Formal Definition: M = (Q, Σ, δ, q₀, F) with precomputed failure function
+    """
+    Formal Definition: M = (Q, Σ, δ, q₀, F) 
     Q = State set built from trie over all keywords
     Σ = {a-z, 0-9, -, .}
     q₀ = START
     F = {keyword end states}
-    
-    Pure DFA with deterministic transitions for each character.
-    Detects overlapping keywords efficiently (e.g., "pay" inside "paypal").
     """
     
     START = "START"
@@ -285,7 +275,6 @@ class KeywordDFA:
     REJECT = "REJECT"
     
     def __init__(self):
-        """Initialize Aho-Corasick DFA with suspicious keywords"""
         self.keywords = [
             "login", "secure", "verify", "update", "account",
             "support", "admin", "panel", "auth", "confirm",
@@ -303,15 +292,12 @@ class KeywordDFA:
             "battlenet", "battle.net", "vk", "aol", "malicious", "script"
         ]
         
-        # Build AC-style transition table
-        self._goto = {}  # goto[state][char] = next_state
-        self._fail = {}  # fail[state] = fallback state
-        self._output = {}  # output[state] = [keywords found at this state]
+        self._goto = {}  
+        self._fail = {}  
+        self._output = {}  
         self._build_ac_automaton()
     
     def _build_ac_automaton(self):
-        """Build Aho-Corasick automaton from keywords (pure DFA construction)"""
-        # Build trie
         trie = {}
         for keyword in self.keywords:
             node = trie
@@ -323,16 +309,12 @@ class KeywordDFA:
                 node["$"] = []
             node["$"].append(keyword)
         
-        # Convert trie to state machine (BFS for level-by-level processing)
-        state_counter = 0
-        state_map = {}  # Map: frozenset(node_id) → state_name
-        node_to_state = {}  # Map: id(trie_node) → state
-        
+      
+        state_counter = 0 
         self._goto[self.START] = {}
         self._fail[self.START] = self.START
         self._output[self.START] = []
-        
-        # Process root's children (depth 1)
+
         queue = []
         for char, child in trie.items():
             if char != "$":
@@ -344,7 +326,6 @@ class KeywordDFA:
                 self._output[child_state] = child.get("$", [])
                 queue.append((child_state, child))
         
-        # BFS: process remaining nodes
         while queue:
             state, node = queue.pop(0)
             
@@ -356,7 +337,7 @@ class KeywordDFA:
                     self._goto[child_state] = {}
                     self._output[child_state] = child.get("$", [])
                     
-                    # Compute failure link
+                    
                     fail_state = self._fail[state]
                     while fail_state != self.START and char not in self._goto[fail_state]:
                         fail_state = self._fail[fail_state]
@@ -366,7 +347,7 @@ class KeywordDFA:
                     else:
                         self._fail[child_state] = self.START
                     
-                    # Merge outputs from failure link
+                   
                     if self._fail[child_state] in self._output:
                         self._output[child_state].extend(self._output[self._fail[child_state]])
                     
@@ -401,7 +382,6 @@ class KeywordDFA:
         
         text_lower = text.lower()
         
-        # AC DFA execution loop
         current_state = self.START
         matched_keywords = []
         
@@ -411,7 +391,6 @@ class KeywordDFA:
             if symbol != "other":
                 current_state = self._transition_ac(current_state, symbol)
                 
-                # Collect outputs from current state and failure links
                 if current_state in self._output:
                     for keyword in self._output[current_state]:
                         if keyword not in matched_keywords:
@@ -431,18 +410,14 @@ class KeywordDFA:
             } if triggered else None
         }
 
-
+#detects xn-- in the hostname
 class PunycodeDFA:
-    """DFA for Punycode (xn--) prefix detection
-    
+    """
     Formal Definition: M = (Q, Σ, δ, q₀, F)
     Q = {START, SCANNING, FOUND_X, FOUND_XN, FOUND_XN_HYPHEN, IN_PUNYCODE, REJECT}
     Σ = {x, n, hyphen, dot, other}
     q₀ = START
     F = {IN_PUNYCODE}
-    
-    Detects the "xn--" prefix that indicates Punycode encoding
-    Example: "xn--e1afmkfd.xn--p1ai" (Russian domain in Punycode)
     """
     
     START = "START"
@@ -454,45 +429,37 @@ class PunycodeDFA:
     REJECT = "REJECT"
     
     def __init__(self):
-        # Transition table δ: Q × Σ → Q
-        # This table defines the sequence: x -> n -> - -> - to detect "xn--"
         self._transition_table = {
-            # From START: look for 'x' or scan
             (self.START, "x"): self.FOUND_X,
             (self.START, "n"): self.SCANNING,
             (self.START, "hyphen"): self.SCANNING,
-            (self.START, "dot"): self.START,  # Reset on dot (new label)
+            (self.START, "dot"): self.START,  
             (self.START, "other"): self.SCANNING,
             
-            # From FOUND_X: look for 'n'
-            (self.FOUND_X, "x"): self.FOUND_X,  # Stay if another 'x'
-            (self.FOUND_X, "n"): self.FOUND_XN,  # Progress to FOUND_XN
+            (self.FOUND_X, "x"): self.FOUND_X,  
+            (self.FOUND_X, "n"): self.FOUND_XN,  
             (self.FOUND_X, "hyphen"): self.SCANNING,
-            (self.FOUND_X, "dot"): self.START,  # Reset on dot
+            (self.FOUND_X, "dot"): self.START, 
             (self.FOUND_X, "other"): self.SCANNING,
             
-            # From FOUND_XN: look for first hyphen
             (self.FOUND_XN, "x"): self.FOUND_X,
             (self.FOUND_XN, "n"): self.SCANNING,
-            (self.FOUND_XN, "hyphen"): self.FOUND_XN_HYPHEN,  # First hyphen
+            (self.FOUND_XN, "hyphen"): self.FOUND_XN_HYPHEN, 
             (self.FOUND_XN, "dot"): self.START,
             (self.FOUND_XN, "other"): self.SCANNING,
             
-            # From FOUND_XN_HYPHEN: look for second hyphen to complete "xn--"
             (self.FOUND_XN_HYPHEN, "x"): self.FOUND_X,
             (self.FOUND_XN_HYPHEN, "n"): self.SCANNING,
-            (self.FOUND_XN_HYPHEN, "hyphen"): self.IN_PUNYCODE,  # Second hyphen -> ACCEPT
+            (self.FOUND_XN_HYPHEN, "hyphen"): self.IN_PUNYCODE,  
             (self.FOUND_XN_HYPHEN, "dot"): self.START,
             (self.FOUND_XN_HYPHEN, "other"): self.SCANNING,
             
-            # From IN_PUNYCODE: stay in accepting state until dot
             (self.IN_PUNYCODE, "x"): self.IN_PUNYCODE,
             (self.IN_PUNYCODE, "n"): self.IN_PUNYCODE,
             (self.IN_PUNYCODE, "hyphen"): self.IN_PUNYCODE,
-            (self.IN_PUNYCODE, "dot"): self.START,  # Reset for next label
+            (self.IN_PUNYCODE, "dot"): self.START,  
             (self.IN_PUNYCODE, "other"): self.IN_PUNYCODE,
             
-            # From SCANNING: look for 'x' to start detection again
             (self.SCANNING, "x"): self.FOUND_X,
             (self.SCANNING, "n"): self.SCANNING,
             (self.SCANNING, "hyphen"): self.SCANNING,
@@ -517,11 +484,9 @@ class PunycodeDFA:
             return "other"
     
     def _transition(self, state: str, symbol: str) -> str:
-        """Transition function δ(q, σ) → q'"""
         return self._transition_table.get((state, symbol), self.REJECT)
     
     def check(self, hostname: str) -> Dict:
-        """Execute DFA using strict table-driven approach"""
         if not hostname:
             return {
                 "triggered": False,
@@ -531,8 +496,6 @@ class PunycodeDFA:
             }
         
         hostname_lower = hostname.lower()
-        
-        # Standard DFA execution loop - ONLY use transition table
         current_state = self.START
         punycode_detected = False
         punycode_parts = []
@@ -541,14 +504,8 @@ class PunycodeDFA:
         
         for char in hostname_lower:
             symbol = self._classify_char(char)
-            
-            # Track when we enter/exit punycode labels (for reporting only)
             was_in_punycode = current_state == self.IN_PUNYCODE
-            
-            # Execute transition (pure DFA logic)
             current_state = self._transition(current_state, symbol)
-            
-            # Track punycode labels for reporting (not part of transition logic)
             if char == ".":
                 if in_punycode_label and current_label:
                     punycode_parts.append(current_label)
@@ -561,11 +518,9 @@ class PunycodeDFA:
                     if not was_in_punycode:
                         punycode_detected = True
         
-        # Handle last label if it's punycode
         if in_punycode_label and current_label:
             punycode_parts.append(current_label)
         
-        # Check if we ever reached an accepting state
         triggered = punycode_detected or current_state in self._accepting_states
         
         return {
@@ -580,17 +535,8 @@ class PunycodeDFA:
             } if triggered else None
         }
 
-
+#runs all the above dfa and combines the results
 class Layer2:
-    """Layer 2 coordinator: combines Confusables, Depth, Keyword, and Punycode DFA checks
-    
-    All checks now use strict table-driven DFA implementations:
-    - ConfusablesDFA: Detects non-ASCII lookalike characters (homograph risk)
-    - DepthDFA: Counts dots with multi-label TLD normalization
-    - KeywordDFA: Aho-Corasick multi-pattern matching on hostname + path + query
-    - PunycodeDFA: Detects "xn--" Punycode prefix
-    """
-    
     def __init__(self, max_subdomain_depth: int = 2):
         self.homograph_dfa = ConfusablesDFA()
         self.depth_dfa = DepthDFA(max_subdomain_depth)
@@ -599,18 +545,15 @@ class Layer2:
         self.tokenizer = TokenizerDFA()
     
     def analyze(self, url: str) -> Dict:
-        """Execute all Layer 2 DFA checks (extended to scan hostname + path + query)"""
         tokens = self.tokenizer.tokenize(url)
         hostname = tokens.get("hostname", "")
         path = tokens.get("path", "")
         query = tokens.get("query", "")
         
-        # Run DFAs on hostname
         homograph_result = self.homograph_dfa.check(hostname)
         depth_result = self.depth_dfa.check(hostname)
         punycode_result = self.punycode_dfa.check(hostname)
         
-        # Run KeywordDFA on hostname + path + query (combined scan)
         combined_text = f"{hostname}{path}{query}"
         keyword_result = self.keyword_dfa.check(combined_text)
         

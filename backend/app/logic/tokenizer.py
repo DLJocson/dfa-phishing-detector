@@ -1,6 +1,4 @@
-"""Tokenizer DFA: Parses URLs into components (Schema, Hostname, Path, Query)"""
-
-from typing import Dict, Callable, Optional
+from typing import Dict
 from enum import Enum
 
 
@@ -37,13 +35,16 @@ class TokenizerDFA:
         # Transition table: {state: {char_type: (next_state, action)}}
         self.transitions = {
             "INIT": {
+                "alphanum": ("SCHEMA", self._append_token),
                 "scheme_char": ("SCHEMA", self._append_token),
                 "other": ("INIT", self._noop)
             },
             "SCHEMA": {
+                "alphanum": ("SCHEMA", self._append_token),
                 "scheme_char": ("SCHEMA", self._append_token),
-                "colon": ("COLON", self._noop),
-                "other": ("HOSTNAME", self._reset_and_append)
+                "colon": ("COLON", self._append_colon),
+                "slash": ("PATH", self._finalize_hostname_start_path_from_schema),
+                "other": ("HOSTNAME", self._schema_to_hostname_append)
             },
             "COLON": {
                 "slash": ("SLASH1", self._noop),
@@ -80,7 +81,9 @@ class TokenizerDFA:
     
     def _classify_char(self, char: str) -> str:
         """Classify character type for transition table lookup"""
-        if char.isalnum() or char in ['+', '-', '.']:
+        if char.isalnum():
+            return "alphanum"
+        elif char in ['+', '-', '.']:
             return "scheme_char"
         elif char == ':':
             return "colon"
@@ -98,6 +101,10 @@ class TokenizerDFA:
         """No operation"""
         pass
     
+    def _append_colon(self, char: str):
+        """Append colon to schema token"""
+        self.current_token += ":"
+    
     def _append_token(self, char: str):
         """Append character to current token"""
         self.current_token += char
@@ -105,6 +112,15 @@ class TokenizerDFA:
     def _reset_and_append(self, char: str):
         """Reset token and append character (for transitioning from SCHEMA to HOSTNAME)"""
         self.current_token = char
+
+    def _schema_to_hostname_append(self, char: str):
+        """Move accumulated schema-like chars into hostname when no colon is present"""
+        self.current_token = self.current_token + char
+
+    def _finalize_hostname_start_path_from_schema(self, char: str):
+        """Finalize hostname (no scheme) and start path at first slash"""
+        self.tokens[TokenType.HOSTNAME] = self.current_token
+        self.current_token = "/"
     
     def _move_to_hostname_with_colon(self, char: str):
         """Move accumulated schema + colon to hostname, append current char"""
