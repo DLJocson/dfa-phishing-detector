@@ -1,0 +1,267 @@
+/* =========================================
+   1. MAIN CONTAINER (LAYOUT: CODE 1 | COLORS: CODE 2)
+   ========================================= */
+.dfa-visualization-container {
+  /* THEME: Glass & Purple Borders from Code 2 */
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 15px 45px -10px rgba(124, 58, 237, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.4);
+  
+  /* LAYOUT: From Code 1 */
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 20px;
+  position: relative;
+  
+  /* ANIMATION: From Code 2 */
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s cubic-bezier(.4,0,.2,1), border-color 0.3s ease;
+}
+
+.dfa-visualization-container:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 35px 70px -15px rgba(124, 58, 237, 0.3);
+  border-color: #fff;
+}
+
+/* DARK MODE: Container Colors from Code 2 */
+body.dark-mode .dfa-visualization-container {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 30px rgba(124, 58, 237, 0.1);
+}
+
+/* =========================================
+   2. HEADER & LAYERS
+   ========================================= */
+.viz-title {
+  margin: 0 0 24px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e1b4b; /* Purple text from Code 2 */
+  border-bottom: 2px solid rgba(124, 58, 237, 0.1);
+  padding-bottom: 12px;
+}
+
+body.dark-mode .viz-title {
+  color: #f8fafc;
+  text-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+}
+
+.dfa-layers-viz {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* FIXED: Header Layout (Name on Left, Status on Right) */
+.dfa-layer-header {
+  display: flex;
+  justify-content: space-between; /* This pushes status to the right */
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.dfa-layer-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Status Label on the Right */
+.layer-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* INNER PANELS: Purple Gradient from Code 2 */
+.dfa-layer-viz {
+  padding: 16px;
+  border-radius: 12px;
+  animation: layerFade 0.6s ease forwards;
+  animation-delay: calc(var(--layer-index) * 0.15s);
+  opacity: 0;
+  
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.18),
+    rgba(76, 29, 149, 0.28)
+  );
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.25), inset 0 0 12px rgba(139, 92, 246, 0.15);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+@keyframes layerFade {
+  from { opacity: 0; transform: translateX(-15px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+body.dark-mode .dfa-layer-header h4,
+body.dark-mode .viz-title {
+  color: #f3f4f6;
+}
+
+body.dark-mode .dfa-layer-viz {
+  background: linear-gradient(135deg, rgba(91, 33, 182, 0.35), rgba(15, 0, 30, 0.6));
+  border-color: rgba(167, 139, 250, 0.45);
+}
+
+/* =========================================
+   3. STATES & TRANSITIONS
+   ========================================= */
+.dfa-states {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+
+.dfa-state {
+  min-width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s cubic-bezier(.4,0,.2,1);
+}
+
+.state-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+body.dark-mode .state-label {
+  color: #1f2937;
+  text-shadow: 0px 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+.dfa-state.initial {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  border: 2px solid #6366f1;
+}
+
+.dfa-state.accept-safe {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+}
+
+.dfa-state.accept-triggered {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.dfa-state.skipped {
+  background: #f1f5f9;
+  border: 2px dashed #94a3b8;
+  opacity: 0.7;
+}
+
+/* TRANSITION ARROWS */
+.dfa-transition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0 12px;
+}
+
+.transition-line {
+  width: 60px;
+  height: 10px;
+  background: transparent;
+  position: relative;
+}
+
+.transition-line::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  border-top: 2px solid #64748b;
+}
+
+.transition-line::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: -2px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid #64748b;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+
+.transition-label {
+  font-size: 10px;
+  color: #6b7280;
+  text-align: center;
+  padding: 2px 6px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+/* =========================================
+   4. INDICATORS & LEGEND
+   ========================================= */
+.state-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.state-indicator.triggered { background: #ef4444; }
+.state-indicator.safe { background: #10b981; }
+.state-indicator.skipped { background: #64748b; }
+
+.legend {
+  display: flex;
+  gap: 24px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(124, 58, 237, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+body.dark-mode .legend-item { color: #cbd5e1; }

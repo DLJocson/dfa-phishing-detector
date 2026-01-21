@@ -1,0 +1,106 @@
+/* Main Card Container */
+.tokenizer-dfa-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 16px;
+}
+
+/* Table Container */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* The Table Itself */
+.dfa-table {
+  width: 100%;
+  border-collapse: collapse; /* FIX: Joins the borders perfectly */
+  min-width: 100%;
+}
+
+/* Headers */
+.dfa-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  padding: 12px 0; /* Adjusted padding */
+  border-bottom: 2px solid #f3f4f6;
+}
+
+/* Table Cells */
+.dfa-table td {
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb; /* Stronger border color */
+  vertical-align: middle;
+}
+
+/* Component Column */
+.cell-component {
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-wrapper {
+  color: #9ca3af;
+  width: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Value Column - Left Aligned */
+.cell-value {
+  text-align: left; /* FIX: Forces left alignment */
+}
+
+/* --- BADGE COLORS --- */
+.token-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge-green { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.badge-yellow { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.badge-purple { background-color: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
+.badge-blue { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.badge-red { background-color: #fef2f2; color: #be123c; border: 1px solid #fecaca; }
+
+/* Dark Mode Support */
+body.dark-mode .tokenizer-dfa-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark-mode .card-title { color: #f3f4f6; }
+body.dark-mode .dfa-table th { color: #94a3b8; border-bottom-color: #334155; }
+body.dark-mode .dfa-table td { border-bottom-color: #334155; }
+body.dark-mode .cell-component { color: #e2e8f0; }
+body.dark-mode tr.bg-white { background-color: #1e293b; } /* Dark bg for "white" rows */
+body.dark-mode tr.bg-gray-50 { background-color: #1e293b; } /* Or slightly lighter for stripe */
+
+/* Dark Mode Badges */
+body.dark-mode .badge-green { background-color: rgba(16, 185, 129, 0.2); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+body.dark-mode .badge-purple { background-color: rgba(139, 92, 246, 0.2); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3); }
+body.dark-mode .badge-blue { background-color: rgba(59, 130, 246, 0.2); color: #93c5fd; border-color: rgba(59, 130, 246, 0.3); }
+body.dark-mode .badge-yellow { background-color: rgba(245, 158, 11, 0.2); color: #fcd34d; border-color: rgba(245, 158, 11, 0.3); }
+body.dark-mode .badge-red { background-color: rgba(225, 29, 72, 0.2); color: #fda4af; border-color: rgba(225, 29, 72, 0.3); }
