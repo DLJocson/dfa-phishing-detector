@@ -787,5 +787,5 @@ class Layer3:
             },
             "triggered_count": triggered_count,
             "total_checks": 3,
-            "layer_risk_score": layer_risk_score
+            "layer_risk_score": round(layer_risk_score, 2)
         }

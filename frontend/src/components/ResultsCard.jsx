@@ -10,6 +10,16 @@ import './ResultsCard.css';
 const ResultsCard = ({ analysis }) => {
   const [expandedLayers, setExpandedLayers] = useState({});
 
+  // Layer name mapping to ensure consistent labeling
+  const getLayerDisplayName = (layerName) => {
+    const layerMappings = {
+      'Layer 1': 'Layer 1 (Basic)',
+      'Layer 2': 'Layer 2 (Advanced)',
+      'Layer 3': 'Layer 3 (Threat)',
+    };
+    return layerMappings[layerName] || layerName;
+  };
+
   if (!analysis) {
     return null;
   }
@@ -68,7 +78,7 @@ const ResultsCard = ({ analysis }) => {
             >
               <div className="layer-header">
                 <div className="layer-header-main">
-                  <h4 className="layer-name" style={{ color: headerColor }}>{layer.layer}</h4>
+                  <h4 className="layer-name" style={{ color: headerColor }}>{getLayerDisplayName(layer.layer)}</h4>
                   <span className="layer-triggers">
                     {layer.triggered_count} / {layer.total_checks} triggered
                   </span>

@@ -52,29 +52,22 @@ const UrlComponentsCard = ({ analysis }) => {
         <table className="dfa-table">
           <thead>
             <tr>
-              {/* FIX: 'w-1 whitespace-nowrap' forces this column to shrink to fit text */}
-              <th className="w-1 whitespace-nowrap pl-6 pr-8 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
-                Component
-              </th>
-              {/* FIX: 'w-auto' lets this column take the remaining space naturally */}
-              <th className="w-auto pl-0 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
-                Extracted Value
-              </th>
+              <th>Component</th>
+              <th>Extracted Value</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, index) => (
               <tr key={row.label} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                {/* FIX: Added padding-right (pr-8) to create the fixed gap you want */}
-                <td className="w-1 whitespace-nowrap pl-6 pr-8 py-3 font-semibold text-gray-700">
-                  <div className="flex items-center gap-3">
+                <td>
+                  <div className="cell-component">
                     <span className="icon-wrapper">
                       {icons[row.label] || icons['Path']}
                     </span>
                     {row.label}
                   </div>
                 </td>
-                <td className="w-auto pl-0 py-3 text-left">
+                <td className="cell-value">
                   <span className={`token-badge ${row.colorClass}`}>
                     {row.value}
                   </span>

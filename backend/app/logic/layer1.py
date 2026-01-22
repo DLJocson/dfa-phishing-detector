@@ -14,7 +14,6 @@ PRINTABLE_ASCII = set(
 # ------------------------------------------------------------------------------
 # 1. LengthDFA
 # ------------------------------------------------------------------------------
-
 #this dfa checks for length of the url
 #if the url exceeds 75 character threshold, it triggers
 class LengthDFA:
@@ -39,18 +38,10 @@ class LengthDFA:
         self.overflow_threshold = 2048
         self.rfc_limit = 8000
         self.debug = debug
-
-        self._transition_table = {
-            (self.START, "char"): self.UNDER_THRESHOLD,
-            (self.UNDER_THRESHOLD, "char"): self.UNDER_THRESHOLD,
-            (self.SUSPICIOUS_LENGTH, "char"): self.SUSPICIOUS_LENGTH,
-        }
         self._accepting_states = {self.SUSPICIOUS_LENGTH, self.BUFFER_OVERFLOW, self.RFC_VIOLATION}
 
     def _classify_char(self, char: str) -> str:
-        if char in PRINTABLE_ASCII:
-            return "char"
-        return "invalid"
+        return "char"
 
     def _transition(self, state: str, symbol: str, count: int) -> str:
         if count > self.rfc_limit:
@@ -106,7 +97,7 @@ class LengthDFA:
             current_state = self._transition(current_state, symbol, char_count)
 
             if current_state == self.SUSPICIOUS_LENGTH:
-                break
+                pass
             if current_state == self.BUFFER_OVERFLOW:
                 break
             if current_state == self.RFC_VIOLATION:
@@ -226,6 +217,12 @@ class SchemaDFA:
         self.FTP = "FTP"
         self.MALICIOUS_FTP = "MALICIOUS_FTP"
         self.MALICIOUS_TFTP = "MALICIOUS_TFTP"
+        
+        self.trap_states = {
+            self.MALICIOUS_DATA, self.MALICIOUS_FILE, self.MALICIOUS_SCRIPT,
+            self.MALICIOUS_DYNAMIC, self.SUSPICIOUS_APP, self.MALICIOUS_FTP,
+            self.MALICIOUS_TFTP
+        }
 
         self._transition_table = {
             # Start branching
@@ -275,7 +272,7 @@ class SchemaDFA:
             (self.BLO, 'b'): self.BLOB, (self.BLO, 'B'): self.BLOB,
             (self.BLOB, ':'): self.MALICIOUS_DYNAMIC,
             
-            # javascript (New)
+            # javascript
             (self.J, 'a'): self.JA, (self.J, 'A'): self.JA,
             (self.JA, 'v'): self.JAV, (self.JA, 'V'): self.JAV,
             (self.JAV, 'a'): self.JAVA, (self.JAV, 'A'): self.JAVA,
@@ -297,20 +294,6 @@ class SchemaDFA:
             (self.TE, 'l'): self.TEL, (self.TE, 'L'): self.TEL,
             (self.TEL, ':'): self.SUSPICIOUS_APP,
         }
-
-        # Self-loops for terminal states so they consume remaining input
-        # This allows full URLs like "data:text/html,..." to be recognized
-        terminal_states = [
-            self.MALICIOUS_DATA, self.MALICIOUS_FILE, self.MALICIOUS_SCRIPT, 
-            self.MALICIOUS_DYNAMIC, self.SUSPICIOUS_APP, 
-            self.INSECURE_HTTP, self.NEUTRAL_HTTPS
-        ]
-        
-        chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/?#[]@!$&'()*+,;=._~-"
-        for state in terminal_states:
-            for char in chars:
-                self._transition_table[(state, char)] = state
-
         self.initial_state = self.START
 
     def check(self, schema: str) -> Dict:
@@ -318,10 +301,35 @@ class SchemaDFA:
              return {"triggered": False, "state": self.REJECT, "risk_score": 0.0, "reason": "No Schema"}
 
         current_state = self.initial_state
+        
         for char in schema:
+            # If we are already in a confirmed malicious state, stop processing and accept.
+            if current_state in self.trap_states:
+                break
+
             current_state = self._transition_table.get((current_state, char), self.REJECT)
             if current_state == self.REJECT:
                 break
+
+        # If the string ended at "HTTPS" (without a colon), we map it to NEUTRAL_HTTPS.
+        if current_state == self.HTTPS:
+            current_state = self.NEUTRAL_HTTPS
+        elif current_state == self.HTTP:
+            current_state = self.INSECURE_HTTP
+        elif current_state == self.DATA:
+            current_state = self.MALICIOUS_DATA
+        elif current_state == self.FILE:
+            current_state = self.MALICIOUS_FILE
+        elif current_state == self.JAVASCRIPT:
+            current_state = self.MALICIOUS_SCRIPT
+        elif current_state == self.BLOB:
+            current_state = self.MALICIOUS_DYNAMIC
+        elif current_state == self.SMS or current_state == self.TEL:
+            current_state = self.SUSPICIOUS_APP
+        elif current_state == self.FTP:
+             current_state = self.MALICIOUS_FTP
+        elif current_state == self.TFTP:
+             current_state = self.MALICIOUS_TFTP
 
         triggered = True
         risk_score = 0.0
@@ -345,6 +353,9 @@ class SchemaDFA:
         elif current_state == self.INSECURE_HTTP:
             risk_score = 0.5
             reason = "Insecure: 'http:' schema detected"
+        elif current_state == self.MALICIOUS_FTP or current_state == self.MALICIOUS_TFTP:
+            risk_score = 0.7
+            reason = "Risky: FTP/TFTP schema detected"
         elif current_state == self.NEUTRAL_HTTPS:
             risk_score = 0.0
             triggered = False
@@ -412,6 +423,17 @@ class TLDDFA:
         
         self.TO = "TO"
         self.TOP = "TOP"
+        
+        self.G = "G"
+        self.GQ = "GQ"
+        
+        self.W = "W"
+        self.WI = "WI"
+        self.WIN = "WIN"
+        
+        self.B = "B"
+        self.BO = "BO"
+        self.BOT = "BOT"
 
         self._transition_table = {
             # Start Branching
@@ -423,6 +445,9 @@ class TLDDFA:
             (self.START, 'r'): self.R, (self.START, 'R'): self.R,
             (self.START, 'c'): self.C, (self.START, 'C'): self.C,
             (self.START, 's'): self.S, (self.START, 'S'): self.S,
+            (self.START, 'g'): self.G, (self.START, 'G'): self.G,
+            (self.START, 'w'): self.W, (self.START, 'W'): self.W,
+            (self.START, 'b'): self.B, (self.START, 'B'): self.B,
             
             # zip
             (self.START, '.'): self.START,
@@ -454,11 +479,23 @@ class TLDDFA:
             
             # su
             (self.S, 'u'): self.SU, (self.S, 'U'): self.SU,
+            
+            # gq
+            (self.G, 'q'): self.GQ, (self.G, 'Q'): self.GQ,
+
+            # win
+            (self.W, 'i'): self.WI, (self.W, 'I'): self.WI,
+            (self.WI, 'n'): self.WIN, (self.WI, 'N'): self.WIN,
+
+            # bot
+            (self.B, 'o'): self.BO, (self.B, 'O'): self.BO,
+            (self.BO, 't'): self.BOT, (self.BO, 'T'): self.BOT,
         }
 
         self._accepting_states = {
             self.ZIP, self.EXE, self.MOV, self.TK, self.XYZ,
-            self.RU, self.CN, self.SU, self.TOP
+            self.RU, self.CN, self.SU, self.TOP,
+            self.GQ, self.WIN, self.BOT
         }
 
     def check(self, tld: str) -> Dict:
@@ -468,15 +505,11 @@ class TLDDFA:
         current_state = self.START
         clean_tld = ""
 
-        # Processing loop
         for char in tld:
-            if char == '.' and current_state == self.START:
-                continue # Skip leading dot
-            
+            if char == '.' and current_state == self.START: continue
             clean_tld += char
             current_state = self._transition_table.get((current_state, char), self.REJECT)
-            if current_state == self.REJECT:
-                break
+            if current_state == self.REJECT: break
         
         triggered = current_state in self._accepting_states
         
@@ -486,6 +519,52 @@ class TLDDFA:
             "reason": f"High-risk TLD: .{clean_tld}" if triggered else "TLD acceptable",
             "value": clean_tld,
             "risk_score": 1.0 if triggered else 0.0
+        }
+
+# ------------------------------------------------------------------------------
+# 4. Lexical & IP Feature Extractor (New Component)
+# ------------------------------------------------------------------------------
+# This component extracts lexical features from the hostname,
+# such as counting dots and hyphens, and checks if the hostname is an IP address
+class LexicalAnalyzer:
+    def check_is_ip(self, hostname: str) -> bool:
+        if not hostname: return False
+        
+        allowed = set("0123456789.")
+        for char in hostname:
+            if char not in allowed:
+                return False
+        return True
+
+    def analyze(self, hostname: str) -> Dict:
+        dot_count = hostname.count('.')
+        hyphen_count = hostname.count('-')
+        is_ip = self.check_is_ip(hostname)
+
+        triggered = False
+        risk = 0.0
+        reasons = []
+
+        if is_ip:
+            triggered = True
+            risk += 0.8
+            reasons.append("Hostname is an IP Address")
+
+        if dot_count > 3:
+            triggered = True
+            risk += 0.2
+            reasons.append(f"High subdomain depth (dots={dot_count})")
+        
+        if hyphen_count > 2:
+            triggered = True
+            risk += 0.2
+            reasons.append(f"High hyphen count ({hyphen_count})")
+
+        return {
+            "triggered": triggered,
+            "risk_score": min(risk, 1.0),
+            "reason": "; ".join(reasons) if reasons else "Lexical OK",
+            "details": {"is_ip": is_ip, "dots": dot_count, "hyphens": hyphen_count}
         }
 
 
@@ -507,6 +586,7 @@ class Layer1:
         self.length_dfa = LengthDFA(threshold=length_threshold, debug=debug)
         self.schema_dfa = SchemaDFA(debug=debug)
         self.tld_dfa = TLDDFA(debug=debug)
+        self.lexical_analyzer = LexicalAnalyzer()
         
         # Import tokenizer for URL parsing
         from .tokenizer import TokenizerDFA
@@ -524,7 +604,13 @@ class Layer1:
         # Extract components for individual DFA checks
         # ----------------------------------------------------------------------
         tokens = self.tokenizer.tokenize(url)
-        hostname_components = self.tokenizer.get_hostname_components(tokens["hostname"])
+        hostname_raw = tokens["hostname"]
+        if ']' not in hostname_raw:
+             hostname_clean = hostname_raw.split(':')[0] if ':' in hostname_raw else hostname_raw
+        else:
+             hostname_clean = hostname_raw 
+        
+        hostname_components = self.tokenizer.get_hostname_components(hostname_clean)
         
         if self.debug:
             print(f"\nTokenized URL:")
@@ -537,8 +623,9 @@ class Layer1:
         # ----------------------------------------------------------------------
         length_result = self.length_dfa.check(url)
         schema_result = self.schema_dfa.check(tokens["schema"])
-        tld_result = self.tld_dfa.check(hostname_components["tld"])
-        
+        tld_candidate = hostname_components.get("tld", "").lower()
+        tld_result = self.tld_dfa.check(tld_candidate)
+        lexical_result = self.lexical_analyzer.analyze(tokens["hostname"])
         
         # Userinfo Bypass Logic (.zip/.mov + @)
         is_risky_tld = tld_result["value"] in ["zip", "mov"]
@@ -567,10 +654,13 @@ class Layer1:
         # Check TLD result
         if tld_result["triggered"] == True:
             triggered_count = triggered_count + 1
+            
+        # Check lexical result
+        if lexical_result["triggered"] == True:
+            triggered_count = triggered_count + 1
         
         # ----------------------------------------------------------------------
         # CALCULATE TOTAL RISK SCORE
-        # Manual risk summation - NO sum()
         # ----------------------------------------------------------------------
         total_risk_score = 0.0
 
@@ -592,25 +682,35 @@ class Layer1:
             tld_risk = 0.0
         total_risk_score = total_risk_score + tld_risk
         
+        try:
+            lexical_risk = lexical_result["risk_score"]
+        except KeyError:
+            lexical_risk = 0.0
+        total_risk_score = total_risk_score + lexical_risk
+        
+        normalized_score = min(total_risk_score, 1.0)
+        
         if self.debug:
             print(f"\n{'#'*70}")
             print(f"# LAYER 1 ANALYSIS COMPLETE")
             print(f"{'#'*70}")
-            print(f"Triggered Checks: {triggered_count}/3")
+            print(f"Triggered Checks: {triggered_count}/4")
             print(f"  - Length DFA: {length_result['triggered']}")
             print(f"  - Schema DFA: {schema_result['triggered']}")
             print(f"  - TLD DFA: {tld_result['triggered']}")
+            print(f"  - Lexical & IP Feature Extractor: {lexical_result['triggered']}")
             print(f"Total Risk Score: {total_risk_score}")
             print(f"{'#'*70}\n")
         
         return {
-            "layer": "Layer 1",
+            "layer": "Layer 1 (Basic)",
             "checks": {
                 "length": length_result,
                 "schema": schema_result,
-                "tld": tld_result
+                "tld": tld_result,
+                "lexical": lexical_result
             },
             "triggered_count": triggered_count,
-            "total_checks": 3,
-            "layer_risk_score": total_risk_score
+            "total_checks": 4,
+            "layer_risk_score": round(total_risk_score, 2)
         }

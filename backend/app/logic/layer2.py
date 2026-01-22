@@ -1,6 +1,9 @@
 from typing import Dict
 from .tokenizer import TokenizerDFA
 
+# ---------------------------------------------------------------------------
+# GLOBAL CONSTANTS
+# ---------------------------------------------------------------------------
 
 #this is the set of known multi-label tlds
 MULTILABEL_TLDS = {
@@ -70,6 +73,9 @@ def normalize_hostname_for_depth(hostname: str) -> str:
     
     return hostname_lower
 
+# ---------------------------------------------------------------------------
+# ConfusablesDFA
+# ---------------------------------------------------------------------------
 #this checks for any characters that is pretending to be an ASCII character
 class ConfusablesDFA:
     """
@@ -86,31 +92,30 @@ class ConfusablesDFA:
     REJECT = "REJECT"
     
     def __init__(self):
-        self._transition_table = {
-            (self.START, "ascii"): self.SCANNING,
-            (self.START, "confusable_nonascii"): self.FOUND_CONFUSABLE,
-            (self.START, "other_nonascii"): self.SCANNING,
-            (self.START, "dot"): self.SCANNING,
-            (self.SCANNING, "ascii"): self.SCANNING,
-            (self.SCANNING, "confusable_nonascii"): self.FOUND_CONFUSABLE,
-            (self.SCANNING, "other_nonascii"): self.SCANNING,
-            (self.SCANNING, "dot"): self.SCANNING,
-            (self.FOUND_CONFUSABLE, "ascii"): self.FOUND_CONFUSABLE,
-            (self.FOUND_CONFUSABLE, "confusable_nonascii"): self.FOUND_CONFUSABLE,
-            (self.FOUND_CONFUSABLE, "other_nonascii"): self.FOUND_CONFUSABLE,
-            (self.FOUND_CONFUSABLE, "dot"): self.FOUND_CONFUSABLE,
-        }
+        
         self._accepting_states = {self.FOUND_CONFUSABLE}
+        
+        self._transition_table = {
+            (self.START,            "ascii"):               self.SCANNING,
+            (self.START,            "confusable_nonascii"): self.FOUND_CONFUSABLE,
+            (self.START,            "other_nonascii"):      self.SCANNING,
+            (self.START,            "dot"):                 self.SCANNING,
+            (self.SCANNING,         "ascii"):               self.SCANNING,
+            (self.SCANNING,         "confusable_nonascii"): self.FOUND_CONFUSABLE,
+            (self.SCANNING,         "other_nonascii"):      self.SCANNING,
+            (self.SCANNING,         "dot"):                 self.SCANNING,
+            (self.FOUND_CONFUSABLE, "ascii"):               self.FOUND_CONFUSABLE,
+            (self.FOUND_CONFUSABLE, "confusable_nonascii"): self.FOUND_CONFUSABLE,
+            (self.FOUND_CONFUSABLE, "other_nonascii"):      self.FOUND_CONFUSABLE,
+            (self.FOUND_CONFUSABLE, "dot"):                 self.FOUND_CONFUSABLE,
+        }
     
     def _classify_char(self, char: str) -> str:
-        if char == ".":
-            return "dot"
-        elif char in ASCII_CHARS:
-            return "ascii"
-        elif char in CONFUSABLE_CHAR_MAP:
+        if char in ASCII_CHARS:
+            return "dot" if char == "." else "ascii"
+        if char in CONFUSABLE_CHAR_MAP:
             return "confusable_nonascii"
-        else:
-            return "other_nonascii"
+        return "other_nonascii"
     
     def _transition(self, state: str, symbol: str) -> str:
         return self._transition_table.get((state, symbol), self.REJECT)
@@ -131,29 +136,23 @@ class ConfusablesDFA:
         for char in hostname:
             symbol = self._classify_char(char)
             current_state = self._transition(current_state, symbol)
+            
             if symbol == "confusable_nonascii" and char not in confusable_chars:
                 confusable_chars.append(char)
         
         triggered = current_state in self._accepting_states
-        risk_score = 1.5 if triggered else 0.0
-        
-        if triggered:
-            reason = f"Confusable lookalike characters detected (homograph risk): {', '.join(confusable_chars)}"
-        else:
-            reason = "No known homograph lookalikes detected (ASCII or benign non-ASCII only)"
         
         return {
             "triggered": triggered,
             "state": current_state,
-            "risk_score": risk_score,
-            "reason": reason,
-            "details": {
-                "hostname": hostname,
-                "confusable_chars": confusable_chars,
-                "char_count": len(confusable_chars)
-            } if triggered else None
+            "risk_score": 1.5 if triggered else 0.0,
+            "reason": f"Confusable lookalike characters: {', '.join(confusable_chars)}" if triggered else "No homographs detected",
+            "details": {"confusable_chars": confusable_chars} if triggered else None
         }
 
+# ---------------------------------------------------------------------------
+# DepthDFA
+# ---------------------------------------------------------------------------
 #this checks for the depth of the subdomains in a hostname
 #it triggers when the dots are more than 3
 class DepthDFA:
@@ -260,6 +259,9 @@ class DepthDFA:
             }
         }
 
+# ---------------------------------------------------------------------------
+# KeywordDFA
+# ---------------------------------------------------------------------------
 #this trie-based dfa detects suspicious keywords in the url
 class KeywordDFA:
     """
@@ -608,6 +610,6 @@ class Layer2:
             },
             "triggered_count": triggered_count,
             "total_checks": 4,
-            "layer_risk_score": layer_risk_score
+            "layer_risk_score": round(layer_risk_score, 2)
         }
         

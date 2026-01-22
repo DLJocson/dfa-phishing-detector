@@ -15,31 +15,35 @@ const RiskSummaryCard = ({ analysis }) => {
   const layer2Score = layerScores['Layer 2 (Advanced)'] ?? 0;
   const layer3Score = layerScores['Layer 3 (Threat)'] ?? 0;
 
-  // Constants
-  const maxScore = 18.40;
+  // Constants - use backend's max_score if available, fallback to calculated value
+  const maxScore = risk_analysis?.max_score ?? 18.40;
   
-  // Risk Level Classification
-  const getRiskLevel = (score) => {
-    if (score >= 0.00 && score <= 2.00) return { level: 'Low', color: '#06B6D4' };
-    if (score >= 2.01 && score <= 6.00) return { level: 'Medium', color: '#EAB308' };
-    if (score >= 6.01 && score <= 12.00) return { level: 'High', color: '#F97316' };
-    if (score >= 12.01 && score <= 18.40) return { level: 'Critical', color: '#991B1B' };
-    return { level: 'Unknown', color: '#6B7280' };
+  // Unified Risk Classification - use backend's risk_level directly
+  const getRiskClassification = (score, backendRiskLevel) => {
+    // Use backend's risk_level if available, fallback to score-based classification
+    if (backendRiskLevel) {
+      const riskMap = {
+        'Benign': { level: 'Benign', color: '#22C55E', description: 'Safe URL' },
+        'Low': { level: 'Low', color: '#3B82F6', description: 'Minimal risk' },
+        'Medium': { level: 'Medium', color: '#F59E0B', description: 'Moderate risk' },
+        'High': { level: 'High', color: '#EF4444', description: 'High risk' },
+        'Critical': { level: 'Critical', color: '#991B1B', description: 'Severe threat' }
+      };
+      return riskMap[backendRiskLevel] || { level: 'Unknown', color: '#6B7280', description: 'Unable to classify' };
+    }
+    
+    // Fallback to score-based classification
+    if (score <= 0.0) return { level: 'Benign', color: '#22C55E', description: 'Safe URL' };
+    if (score <= 2.0) return { level: 'Low', color: '#3B82F6', description: 'Minimal risk' };
+    if (score <= 6.0) return { level: 'Medium', color: '#F59E0B', description: 'Moderate risk' };
+    if (score <= 12.0) return { level: 'High', color: '#EF4444', description: 'High risk' };
+    return { level: 'Critical', color: '#991B1B', description: 'Severe threat' };
   };
 
-  // Classification Labels
-  const getClassification = (score) => {
-    if (score >= 0.00 && score <= 1.00) return { label: 'Benign', color: '#22C55E' };
-    if (score >= 1.01 && score <= 5.00) return { label: 'Suspicious', color: '#FACC15' };
-    if (score >= 5.01) return { label: 'Malicious', color: '#EF4444' };
-    return { label: 'Unknown', color: '#6B7280' };
-  };
-
-  const riskLevelInfo = getRiskLevel(riskScore);
-  const classificationInfo = getClassification(riskScore);
+  const riskClassificationInfo = getRiskClassification(riskScore, risk_analysis?.risk_level);
   
-  // Use classification color for the gauge (more prominent)
-  const gaugeColor = classificationInfo.color;
+  // Use classification color for the gauge
+  const gaugeColor = riskClassificationInfo.color;
 
   // Calculate Percentage for the Gradient (0 to 100)
   const percentage = Math.min(100, Math.max(0, (riskScore / maxScore) * 100));
@@ -60,7 +64,7 @@ const RiskSummaryCard = ({ analysis }) => {
             className="gauge-score-text" 
             style={{ color: gaugeColor }}
           >
-            {Number(riskScore).toFixed(2)}
+            {percentage.toFixed(0)}%
           </span>
           <span className="gauge-label">Risk Level</span>
         </div>
@@ -70,24 +74,24 @@ const RiskSummaryCard = ({ analysis }) => {
       <div className="score-breakdown">
         <div className="score-breakdown-title">Score Breakdown</div>
         
-        {/* Risk Level and Classification Labels */}
+        {/* Unified Risk Classification Display */}
         <div className="risk-labels">
           <div className="risk-label-item">
             <span className="risk-label-text">Risk Level:</span>
             <span 
               className="risk-label-value" 
-              style={{ color: riskLevelInfo.color }}
+              style={{ color: riskClassificationInfo.color }}
             >
-              {riskLevelInfo.level}
+              {riskClassificationInfo.level}
             </span>
           </div>
           <div className="risk-label-item">
-            <span className="risk-label-text">Classification:</span>
+            <span className="risk-label-text">Description:</span>
             <span 
               className="risk-label-value" 
-              style={{ color: classificationInfo.color }}
+              style={{ color: riskClassificationInfo.color }}
             >
-              {classificationInfo.label}
+              {riskClassificationInfo.description}
             </span>
           </div>
         </div>

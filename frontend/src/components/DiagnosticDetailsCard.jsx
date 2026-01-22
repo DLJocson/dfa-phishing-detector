@@ -2,6 +2,16 @@ import React from 'react';
 import './DiagnosticDetailsCard.css';
 
 const DiagnosticDetailsCard = ({ analysis }) => {
+  // Layer name mapping to ensure consistent labeling
+  const getLayerDisplayName = (layerName) => {
+    const layerMappings = {
+      'Layer 1': 'Layer 1 (Basic)',
+      'Layer 2': 'Layer 2 (Advanced)',
+      'Layer 3': 'Layer 3 (Threat)',
+    };
+    return layerMappings[layerName] || layerName;
+  };
+
   if (!analysis) return null;
   const { layers } = analysis;
 
@@ -33,7 +43,7 @@ const DiagnosticDetailsCard = ({ analysis }) => {
           const description = checkDescriptions[checkName] || checkName;
           
           diagnostics.push({
-            layer: layer.layer,
+            layer: getLayerDisplayName(layer.layer),
             pattern: description,
             weight: checkResult.risk_score || 0,
             checkName
@@ -42,14 +52,33 @@ const DiagnosticDetailsCard = ({ analysis }) => {
       });
     });
 
-    // Sort by weight (highest first)
-    diagnostics.sort((a, b) => b.weight - a.weight);
+    // Sort by layer order (Layer 1, then Layer 2, then Layer 3), then by weight within each layer
+    const layerOrder = {
+      'Layer 1 (Basic)': 1,
+      'Layer 2 (Advanced)': 2,
+      'Layer 3 (Threat)': 3
+    };
+    
+    diagnostics.sort((a, b) => {
+      const layerAOrder = layerOrder[a.layer] || 999;
+      const layerBOrder = layerOrder[b.layer] || 999;
+      
+      if (layerAOrder !== layerBOrder) {
+        return layerAOrder - layerBOrder;
+      }
+      
+      // If same layer, sort by weight (highest first)
+      return b.weight - a.weight;
+    });
 
     return diagnostics;
   };
 
   const diagnostics = generateDiagnosticDetails();
   const totalThreatScore = diagnostics.reduce((sum, diag) => sum + diag.weight, 0);
+  
+  // Use backend's max_score if available, fallback to calculated value
+  const maxScore = analysis?.risk_analysis?.max_score ?? 18.40;
 
   if (diagnostics.length === 0) return null;
 
@@ -82,7 +111,7 @@ const DiagnosticDetailsCard = ({ analysis }) => {
       
       <div className="total-score">
         <div className="total-score-label">Total Threat Score</div>
-        <div className="total-score-value">{totalThreatScore.toFixed(2)} / 18.40</div>
+        <div className="total-score-value">{totalThreatScore.toFixed(2)} / {maxScore.toFixed(2)}</div>
       </div>
     </div>
   );

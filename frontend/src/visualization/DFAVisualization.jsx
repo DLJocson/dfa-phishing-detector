@@ -6,6 +6,16 @@ import React from 'react';
 import './DFAVisualization.css';
 
 const DFAVisualization = ({ analysis }) => {
+  // Layer name mapping to ensure consistent labeling
+  const getLayerDisplayName = (layerName) => {
+    const layerMappings = {
+      'Layer 1': 'Layer 1 (Basic)',
+      'Layer 2': 'Layer 2 (Advanced)',
+      'Layer 3': 'Layer 3 (Threat)',
+    };
+    return layerMappings[layerName] || layerName;
+  };
+
   if (!analysis || !analysis.layers || !Array.isArray(analysis.layers)) {
     return (
       <div className="dfa-visualization-container">
@@ -31,7 +41,7 @@ const DFAVisualization = ({ analysis }) => {
         style={{ "--layer-index": layerIndex }}
       >
         <div className="dfa-layer-header">
-          <h4>{layer.layer}</h4>
+          <h4>{getLayerDisplayName(layer.layer)}</h4>
           <div className="layer-status">
             <span className={`status-indicator ${triggeredChecks.length > 0 ? 'active' : 'inactive'}`}>
               {triggeredChecks.length > 0 ? '●' : '○'}

@@ -29,7 +29,7 @@ const SystemOverview = () => {
         <div className="layer-card layer-1">
           <div className="layer-header">
             <span className="layer-icon">🔍</span>
-            <h5 className="layer-title">Layer 1: Basic Analysis</h5>
+            <h5 className="layer-title">Layer 1 (Basic)</h5>
           </div>
           <p className="layer-description">
             Rapidly filters low-hanging fruit by validating URL length, checking for non-standard schemas (e.g., http://), and cross-referencing Top-Level Domains (TLDs) against a known blocklist.

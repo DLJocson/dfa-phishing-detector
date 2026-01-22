@@ -166,15 +166,43 @@ body.dark-mode .diagnostic-alert-message {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #6b7280;
-  padding: 12px 0; /* Adjusted padding */
+  padding: 12px 16px; /* Added horizontal padding for proper spacing */
   border-bottom: 2px solid #f3f4f6;
+  white-space: nowrap;
+}
+
+/* First column header - Component */
+.dfa-table th:first-child {
+  width: 150px; /* Fixed width for component column */
+  min-width: 150px;
+}
+
+/* Second column header - Extracted Value */
+.dfa-table th:last-child {
+  width: auto; /* Auto width for extracted value column */
+  min-width: 200px; /* Minimum width to prevent cutoff */
 }
 
 /* Table Cells */
 .dfa-table td {
-  padding: 12px 0;
+  padding: 12px 16px; /* Match header padding */
   border-bottom: 1px solid #e5e7eb; /* Stronger border color */
   vertical-align: middle;
+}
+
+/* First column cells - Component */
+.dfa-table td:first-child {
+  width: 150px; /* Fixed width for component column */
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+/* Second column cells - Extracted Value */
+.dfa-table td:last-child {
+  width: auto; /* Auto width for extracted value column */
+  min-width: 200px; /* Minimum width to prevent cutoff */
+  word-wrap: break-word; /* Allow long values to wrap */
+  word-break: break-all; /* Break long strings if needed */
 }
 
 /* Component Column */
