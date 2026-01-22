@@ -22,11 +22,12 @@ const InputBar = ({ onAnalyze, isLoading }) => {
 
   const exampleUrls = {
     suspicious: [
-      'http://sub1.sub2.sub3.suspicious-domain-name-with-excessive-hyphens.xyz/login/verify/account/details/update/secure/ref/123456789',
-      'https://xn--login.secure.update.paypаl.com',
-      'https://server12345.com/click?id=1&u=2&s=3&t=4&m=5&redirect=http://evil.com',
-      'http://xn--secure-login.update12345.ru/verify?dest=http://phish.com',
-      'ftp://a.b.c.paypаl.tk/limit?q=http://bad.com'
+      'http://account-verification@192.168.100.50/portal/login-recovery-system-authentication-gateway-2024.zip',
+      'https://раypаl.login.update.admin.payment.auth.verify.top/secure?password=reset',
+      'https://myaccount-53829.no-ip.org/oauth/callback?continue=https://accounts.google.com',
+      'https://secure-login.update.сompany.ru',
+      'https://gmail-security.verification.settings.com/signin?continue=https://mail.google.com',
+      'http://сhase.online.banking.secure.account.xn--verify.login-673849.xyz/auth?redirect=https://chase.com&sessionid=a8k3m9'
     ],
     benign: [
       'https://www.google.com'
@@ -79,7 +80,7 @@ const InputBar = ({ onAnalyze, isLoading }) => {
                 type="button"
                 disabled={isLoading}
               >
-                Phish Ex {idx + 1}
+                Phish {idx + 1}
               </button>
             ))}
 
@@ -95,7 +96,7 @@ const InputBar = ({ onAnalyze, isLoading }) => {
                 type="button"
                 disabled={isLoading}
               >
-                Safe Ex {idx + 1}
+                Safe Ex
               </button>
             ))}
           </div>
