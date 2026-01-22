@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# COMPONENT: Layer2 - Advanced URL Analysis
+# DESCRIPTION: Implements sophisticated DFA checks for homograph attacks, subdomain
+# depth analysis, keyword detection, and punycode encoding detection.
+# ---------------------------------------------------------------------------
+
 from typing import Dict
 from .tokenizer import TokenizerDFA
 
@@ -20,7 +26,7 @@ MULTILABEL_TLDS = {
     "co.id", "go.id", "org.id",
 }
 
-# ASCII character set
+# ASCII character set for URL validation
 ASCII_CHARS = set(
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -29,6 +35,7 @@ ASCII_CHARS = set(
 )
 
 # Map confusable characters to their hex codes (reverse of CONFUSABLE_MAP for lookup)
+# Used to detect homograph attacks where Unicode characters mimic ASCII
 CONFUSABLE_CHAR_MAP = {
     # Cyrillic
     'а': 0x0430,  # а (Cyrillic a)
@@ -74,7 +81,8 @@ def normalize_hostname_for_depth(hostname: str) -> str:
     return hostname_lower
 
 # ---------------------------------------------------------------------------
-# ConfusablesDFA
+# COMPONENT: ConfusablesDFA
+# DESCRIPTION: Detects homograph attacks using Unicode lookalike characters.
 # ---------------------------------------------------------------------------
 #this checks for any characters that is pretending to be an ASCII character
 class ConfusablesDFA:
@@ -145,13 +153,14 @@ class ConfusablesDFA:
         return {
             "triggered": triggered,
             "state": current_state,
-            "risk_score": 1.5 if triggered else 0.0,
+            "risk_score": 2.0 if triggered else 0.0,
             "reason": f"Confusable lookalike characters: {', '.join(confusable_chars)}" if triggered else "No homographs detected",
             "details": {"confusable_chars": confusable_chars} if triggered else None
         }
 
 # ---------------------------------------------------------------------------
-# DepthDFA
+# COMPONENT: DepthDFA
+# DESCRIPTION: Detects excessive subdomain depth indicating potential attacks.
 # ---------------------------------------------------------------------------
 #this checks for the depth of the subdomains in a hostname
 #it triggers when the dots are more than 3
@@ -260,7 +269,8 @@ class DepthDFA:
         }
 
 # ---------------------------------------------------------------------------
-# KeywordDFA
+# COMPONENT: KeywordDFA
+# DESCRIPTION: Trie-based DFA for detecting suspicious phishing keywords.
 # ---------------------------------------------------------------------------
 #this trie-based dfa detects suspicious keywords in the url
 class KeywordDFA:
@@ -412,6 +422,10 @@ class KeywordDFA:
             } if triggered else None
         }
 
+# ---------------------------------------------------------------------------
+# COMPONENT: PunycodeDFA
+# DESCRIPTION: Detects punycode encoding (xn--) used in homograph attacks.
+# ---------------------------------------------------------------------------
 #detects xn-- in the hostname
 class PunycodeDFA:
     """
@@ -528,7 +542,7 @@ class PunycodeDFA:
         return {
             "triggered": triggered,
             "state": current_state,
-            "risk_score": 1.3 if triggered else 0.0,
+            "risk_score": 1.5 if triggered else 0.0,
             "reason": f"Punycode encoding detected in {len(punycode_parts)} domain part(s) - may indicate homograph attack" if triggered else "No punycode detected",
             "details": {
                 "hostname": hostname,
@@ -536,6 +550,11 @@ class PunycodeDFA:
                 "punycode_count": len(punycode_parts)
             } if triggered else None
         }
+
+# ---------------------------------------------------------------------------
+# COMPONENT: Layer2
+# DESCRIPTION: Orchestrates all Layer 2 DFA checks and aggregates results.
+# ---------------------------------------------------------------------------
 
 #runs all the above dfa and combines the results
 class Layer2:

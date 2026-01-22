@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# COMPONENT: TokenizerDFA
+# DESCRIPTION: DFA-based URL tokenizer that extracts schema, hostname, path,
+# query, and fragment components using formal automata principles.
+# ---------------------------------------------------------------------------
+
 from typing import Dict
 from enum import Enum
 
@@ -13,6 +19,14 @@ class TokenType(Enum):
 
 class TokenizerDFA:
     """DFA for URL tokenization - Formal automata implementation"""
+    
+    """
+    Formal Definition: M = (Q, Σ, δ, q₀, F)
+    Q = {INIT, SCHEMA, COLON, SLASH1, AFTER_SCHEMA, HOSTNAME, PATH, QUERY, FRAGMENT, OPAQUE_BODY, END}
+    Σ = {alphanum, scheme_char, colon, slash, question, hash, other}
+    q₀ = INIT
+    F = {END} (final accepting state)
+    """
     
     def __init__(self):
         self.reset()
@@ -48,7 +62,7 @@ class TokenizerDFA:
             },
             "COLON": {
                 "slash": ("SLASH1", self._noop),
-                "other": ("HOSTNAME", self._move_to_hostname_with_colon)
+                "other": ("OPAQUE_BODY", self._start_opaque_body)
             },
             "SLASH1": {
                 "slash": ("AFTER_SCHEMA", self._finalize_schema),
@@ -75,6 +89,10 @@ class TokenizerDFA:
             },
             "FRAGMENT": {
                 "other": ("FRAGMENT", self._append_token)
+                
+            },
+            "OPAQUE_BODY": {
+                 "other": ("OPAQUE_BODY", self._append_token)
             },
             "END": {}
         }
@@ -108,6 +126,10 @@ class TokenizerDFA:
     def _append_token(self, char: str):
         """Append character to current token"""
         self.current_token += char
+        
+    def _start_opaque_body(self, char: str):
+        self.tokens[TokenType.SCHEMA] = self.current_token
+        self.current_token = char
     
     def _reset_and_append(self, char: str):
         """Reset token and append character (for transitioning from SCHEMA to HOSTNAME)"""
@@ -208,6 +230,8 @@ class TokenizerDFA:
             self.tokens[TokenType.QUERY] = self.current_token
         elif self.state == "FRAGMENT" and self.current_token:
             self.tokens[TokenType.FRAGMENT] = self.current_token
+        elif self.state == "OPAQUE_BODY" and self.current_token:
+            self.tokens[TokenType.PATH] = self.current_token
         
         return {
             "schema": self.tokens[TokenType.SCHEMA],

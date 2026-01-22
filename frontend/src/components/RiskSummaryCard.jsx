@@ -14,6 +14,7 @@ const RiskSummaryCard = ({ analysis }) => {
   const layer1Score = layerScores['Layer 1 (Basic)'] ?? 0;
   const layer2Score = layerScores['Layer 2 (Advanced)'] ?? 0;
   const layer3Score = layerScores['Layer 3 (Threat)'] ?? 0;
+  const layerMultipliers = risk_analysis?.weights?.layer_multipliers || {};
 
   // Constants - use backend's max_score if available, fallback to calculated value
   const maxScore = risk_analysis?.max_score ?? 18.40;
@@ -59,14 +60,14 @@ const RiskSummaryCard = ({ analysis }) => {
       {/* Left Col: Dynamic Conic Gauge */}
       <div className="conic-gauge" style={gaugeStyle}>
         <div className="gauge-inner-circle">
-          {/* Numbers also use classification color */}
+          {/* Display actual score (not percent) to match backend thresholds */}
           <span 
             className="gauge-score-text" 
             style={{ color: gaugeColor }}
           >
-            {percentage.toFixed(0)}%
+            {Number(riskScore).toFixed(2)}
           </span>
-          <span className="gauge-label">Risk Level</span>
+          <span className="gauge-label">Risk Score</span>
         </div>
       </div>
 
@@ -110,6 +111,25 @@ const RiskSummaryCard = ({ analysis }) => {
             <span className="breakdown-score">{layer3Score}</span>
           </div>
         </div>
+
+        {/* Transparency: Global Layer Multipliers */}
+        {Object.keys(layerMultipliers).length > 0 && (
+          <div className="breakdown-table" style={{ marginTop: 14 }}>
+            <div className="score-breakdown-title" style={{ fontSize: 14, marginBottom: 8 }}>
+              Layer Multipliers
+            </div>
+            {['Layer 1 (Basic)', 'Layer 2 (Advanced)', 'Layer 3 (Threat)'].map((layer) => {
+              const info = layerMultipliers[layer];
+              if (!info) return null;
+              return (
+                <div className="breakdown-row" key={layer}>
+                  <span>{layer}: {info.role}</span>
+                  <span className="breakdown-score">{Number(info.multiplier).toFixed(1)}×</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="risk-stats-footer">
           <div className="stat-row">

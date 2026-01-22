@@ -1,6 +1,11 @@
+# ---------------------------------------------------------------------------
+# COMPONENT: Layer1 - Basic URL Analysis
+# DESCRIPTION: Implements foundational DFA checks for URL length, schema validation, 
+# TLD detection, and lexical analysis including IP address detection.
+# ---------------------------------------------------------------------------
+
 from typing import Dict
 
-# ASCII characters (32-126) 
 PRINTABLE_ASCII = set(
     " !\"#$%&'()*+,-./"
     "0123456789"
@@ -11,11 +16,10 @@ PRINTABLE_ASCII = set(
     "{|}~"
 )
 
-# ------------------------------------------------------------------------------
-# 1. LengthDFA
-# ------------------------------------------------------------------------------
-#this dfa checks for length of the url
-#if the url exceeds 75 character threshold, it triggers
+# ---------------------------------------------------------------------------
+# COMPONENT: LengthDFA
+# DESCRIPTION: Detects URL length anomalies and potential DoS attacks.
+# ---------------------------------------------------------------------------
 class LengthDFA:
     """
     Formal Definition: M = (Q, Σ, δ, q₀, F)
@@ -109,7 +113,7 @@ class LengthDFA:
         reason = "Length acceptable"
         
         if current_state == self.SUSPICIOUS_LENGTH:
-            risk_score = 0.3
+            risk_score = 0.2
             reason = f"Length ({char_count}) > {self.suspicious_threshold}"
         elif current_state == self.BUFFER_OVERFLOW:
             risk_score = 1.0 
@@ -126,12 +130,10 @@ class LengthDFA:
             "risk_score": risk_score,
         }
 
-# ------------------------------------------------------------------------------
-# 2. SchemaDFA
-# ------------------------------------------------------------------------------
-
-#this DFA checks for malicious schemas like data: and file: and 
-#keeps schemas such as http: and https: as safe
+# ---------------------------------------------------------------------------
+# COMPONENT: SchemaDFA
+# DESCRIPTION: Identifies malicious (data:, file:) vs safe (https:) URL schemas.
+# ---------------------------------------------------------------------------
 class SchemaDFA:
     """
     Formal Definition: M = (Q, Σ, δ, q₀, F)
@@ -148,41 +150,35 @@ class SchemaDFA:
     def __init__(self, debug: bool = False):
         self.debug = debug
 
-        # Base States
         self.START = "START"
         self.REJECT = "REJECT"
         
-        # HTTP/HTTPS states
         self.H = "H"
         self.HT = "HT"
         self.HTT = "HTT"
         self.HTTP = "HTTP"
         self.HTTPS = "HTTPS"
-        self.INSECURE_HTTP = "INSECURE_HTTP"    # Final state for http:
-        self.NEUTRAL_HTTPS = "NEUTRAL_HTTPS"    # Final state for https:
+        self.INSECURE_HTTP = "INSECURE_HTTP"
+        self.NEUTRAL_HTTPS = "NEUTRAL_HTTPS"
         
-        # FILE States
         self.F = "F"
         self.FI = "FI"
         self.FIL = "FIL"
         self.FILE = "FILE"
-        self.MALICIOUS_FILE = "MALICIOUS_FILE"  # Final state for file:
+        self.MALICIOUS_FILE = "MALICIOUS_FILE"
         
-        # DATA States
         self.D = "D"
         self.DA = "DA"
         self.DAT = "DAT"
         self.DATA = "DATA"
-        self.MALICIOUS_DATA = "MALICIOUS_DATA" # Final state for data:
+        self.MALICIOUS_DATA = "MALICIOUS_DATA"
         
-        # BLOB States
         self.B = "B"
         self.BL = "BL"
         self.BLO = "BLO"
         self.BLOB = "BLOB"
-        self.MALICIOUS_DYNAMIC = "MALICIOUS_DYNAMIC" # Final state for blob:
+        self.MALICIOUS_DYNAMIC = "MALICIOUS_DYNAMIC"
         
-        # JAVASCRIPT States (New)
         self.J = "J"
         self.JA = "JA"
         self.JAV = "JAV"
@@ -193,26 +189,20 @@ class SchemaDFA:
         self.JAVASCRI = "JAVASCRI"
         self.JAVASCRIP = "JAVASCRIP"
         self.JAVASCRIPT = "JAVASCRIPT"
-        self.MALICIOUS_SCRIPT = "MALICIOUS_SCRIPT" # Final state for javascript:
+        self.MALICIOUS_SCRIPT = "MALICIOUS_SCRIPT"
         
-        # SMS States
         self.S = "S"
         self.SM = "SM"
         self.SMS = "SMS"
-        # Shared final state for SMS/TEL
         self.SUSPICIOUS_APP = "SUSPICIOUS_APP"
         
-        # TEL States - Note: T overlaps with START->T in original, but here we define path
         self.T = "T"
         self.TE = "TE"
         self.TEL = "TEL"
         
-        # FTP/TFTP states
-        self.T = "T"
         self.TF = "TF"
         self.TFT = "TFT"
         self.TFTP = "TFTP"
-        self.F = "F"
         self.FT = "FT"
         self.FTP = "FTP"
         self.MALICIOUS_FTP = "MALICIOUS_FTP"
@@ -225,7 +215,6 @@ class SchemaDFA:
         }
 
         self._transition_table = {
-            # Start branching
             (self.START, 'h'): self.H, (self.START, 'H'): self.H,
             (self.START, 'f'): self.F, (self.START, 'F'): self.F,
             (self.START, 'd'): self.D, (self.START, 'D'): self.D,
@@ -234,7 +223,6 @@ class SchemaDFA:
             (self.START, 's'): self.S, (self.START, 'S'): self.S,
             (self.START, 't'): self.T, (self.START, 'T'): self.T,
 
-            # http/https
             (self.H, 't'): self.HT, (self.H, 'T'): self.HT,
             (self.HT, 't'): self.HTT, (self.HT, 'T'): self.HTT,
             (self.HTT, 'p'): self.HTTP, (self.HTT, 'P'): self.HTTP,
@@ -242,37 +230,30 @@ class SchemaDFA:
             (self.HTTP, ':'): self.INSECURE_HTTP,
             (self.HTTPS, ':'): self.NEUTRAL_HTTPS,
         
-            # tftp
             (self.T, 'f'): self.TF, (self.T, 'F'): self.TF,
-            (self.T, 'F'): self.TF, (self.T, 'f'): self.TF,
             (self.TF, 't'): self.TFT, (self.TF, 'T'): self.TFT,
             (self.TFT, 'p'): self.TFTP, (self.TFT, 'P'): self.TFTP,
             (self.TFTP, ':'): self.MALICIOUS_TFTP,
 
-            # data
             (self.D, 'a'): self.DA, (self.D, 'A'): self.DA,
             (self.DA, 't'): self.DAT, (self.DA, 'T'): self.DAT,
             (self.DAT, 'a'): self.DATA, (self.DAT, 'A'): self.DATA,
             (self.DATA, ':'): self.MALICIOUS_DATA,
 
-            # file
             (self.F, 'i'): self.FI, (self.F, 'I'): self.FI,
             (self.FI, 'l'): self.FIL, (self.FI, 'L'): self.FIL,
             (self.FIL, 'e'): self.FILE, (self.FIL, 'E'): self.FILE,
             (self.FILE, ':'): self.MALICIOUS_FILE,
 
-            # ftp
             (self.F, 't'): self.FT, (self.F, 'T'): self.FT,
             (self.FT, 'p'): self.FTP, (self.FT, 'P'): self.FTP,
             (self.FTP, ':'): self.MALICIOUS_FTP,
             
-            # blob
             (self.B, 'l'): self.BL, (self.B, 'L'): self.BL,
             (self.BL, 'o'): self.BLO, (self.BL, 'O'): self.BLO,
             (self.BLO, 'b'): self.BLOB, (self.BLO, 'B'): self.BLOB,
             (self.BLOB, ':'): self.MALICIOUS_DYNAMIC,
             
-            # javascript
             (self.J, 'a'): self.JA, (self.J, 'A'): self.JA,
             (self.JA, 'v'): self.JAV, (self.JA, 'V'): self.JAV,
             (self.JAV, 'a'): self.JAVA, (self.JAV, 'A'): self.JAVA,
@@ -284,12 +265,10 @@ class SchemaDFA:
             (self.JAVASCRIP, 't'): self.JAVASCRIPT, (self.JAVASCRIP, 'T'): self.JAVASCRIPT,
             (self.JAVASCRIPT, ':'): self.MALICIOUS_SCRIPT,
             
-            # sms
             (self.S, 'm'): self.SM, (self.S, 'M'): self.SM,
             (self.SM, 's'): self.SMS, (self.SM, 'S'): self.SMS,
             (self.SMS, ':'): self.SUSPICIOUS_APP,
             
-            # tel
             (self.T, 'e'): self.TE, (self.T, 'E'): self.TE,
             (self.TE, 'l'): self.TEL, (self.TE, 'L'): self.TEL,
             (self.TEL, ':'): self.SUSPICIOUS_APP,
@@ -303,7 +282,6 @@ class SchemaDFA:
         current_state = self.initial_state
         
         for char in schema:
-            # If we are already in a confirmed malicious state, stop processing and accept.
             if current_state in self.trap_states:
                 break
 
@@ -311,7 +289,6 @@ class SchemaDFA:
             if current_state == self.REJECT:
                 break
 
-        # If the string ended at "HTTPS" (without a colon), we map it to NEUTRAL_HTTPS.
         if current_state == self.HTTPS:
             current_state = self.NEUTRAL_HTTPS
         elif current_state == self.HTTP:
@@ -336,7 +313,7 @@ class SchemaDFA:
         reason = "Unknown Schema"
 
         if current_state == self.MALICIOUS_DATA:
-            risk_score = 0.8
+            risk_score = 1.0
             reason = "Critical: 'data:' schema detected"
         elif current_state == self.MALICIOUS_FILE:
             risk_score = 1.0
@@ -372,9 +349,10 @@ class SchemaDFA:
             "value": schema
         }
 
-# ------------------------------------------------------------------------------
-# 3. TLDDFA
-# ------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# COMPONENT: TLDDFA
+# DESCRIPTION: Detects suspicious top-level domains associated with malicious sites.
+# ---------------------------------------------------------------------------
 # this dfa detects suspicious tlds such as .zip, .exe, .mov, .tk, .xyz
 class TLDDFA:
     """
@@ -500,7 +478,8 @@ class TLDDFA:
 
     def check(self, tld: str) -> Dict:
         if not tld:
-            return {"triggered": False, "state": self.REJECT, "risk_score": 0.0, "reason": "No TLD"}
+            # Ensure callers can safely access `value` even when no TLD exists
+            return {"triggered": False, "state": self.REJECT, "risk_score": 0.0, "reason": "No TLD", "value": ""}
 
         current_state = self.START
         clean_tld = ""
@@ -521,9 +500,10 @@ class TLDDFA:
             "risk_score": 1.0 if triggered else 0.0
         }
 
-# ------------------------------------------------------------------------------
-# 4. Lexical & IP Feature Extractor (New Component)
-# ------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# COMPONENT: LexicalAnalyzer
+# DESCRIPTION: Extracts lexical features from hostnames including IP detection.
+# ---------------------------------------------------------------------------
 # This component extracts lexical features from the hostname,
 # such as counting dots and hyphens, and checks if the hostname is an IP address
 class LexicalAnalyzer:
@@ -568,7 +548,11 @@ class LexicalAnalyzer:
         }
 
 
-# ------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# COMPONENT: Layer1
+# DESCRIPTION: Orchestrates all Layer 1 DFA checks and aggregates results.
+# ---------------------------------------------------------------------------
+
 # LAYER 1 COORDINATOR
 # Purpose: Orchestrate all Layer 1 DFA checks and aggregate results
 # 
@@ -576,7 +560,7 @@ class LexicalAnalyzer:
 #   1. LengthDFA - URL length anomaly detection
 #   2. SchemaDFA - Malicious protocol detection  
 #   3. TLDDFA - High-risk TLD detection
-# ------------------------------------------------------------------------------
+#   4. LexicalAnalyzer - IP address and lexical feature detection
 
 class Layer1:
     def __init__(self, length_threshold: int = 75, debug: bool = False):
@@ -606,9 +590,14 @@ class Layer1:
         tokens = self.tokenizer.tokenize(url)
         hostname_raw = tokens["hostname"]
         if ']' not in hostname_raw:
-             hostname_clean = hostname_raw.split(':')[0] if ':' in hostname_raw else hostname_raw
+            # Strip port if present
+            hostname_clean = hostname_raw.split(':')[0] if ':' in hostname_raw else hostname_raw
+            # Strip userinfo if present (e.g., user:pass@host)
+            if '@' in hostname_clean:
+                hostname_clean = hostname_clean.split('@')[-1]
         else:
-             hostname_clean = hostname_raw 
+            # IPv6 literal form; keep as-is
+            hostname_clean = hostname_raw
         
         hostname_components = self.tokenizer.get_hostname_components(hostname_clean)
         
@@ -623,12 +612,41 @@ class Layer1:
         # ----------------------------------------------------------------------
         length_result = self.length_dfa.check(url)
         schema_result = self.schema_dfa.check(tokens["schema"])
+        # For schemes without a real hostname (e.g., data:), fall back to the opaque/body/path
+        # so Layer 1 can still evaluate TLD/lexical-like signals from the content.
+        lexical_input = hostname_clean
         tld_candidate = hostname_components.get("tld", "").lower()
+        if not lexical_input:
+            lexical_input = tokens.get("path", "") or ""
+            # Attempt to extract a trailing ".tld" from the opaque/path for TLD DFA
+            # Example: "...too-many-hyphens.ru" -> "ru"
+            text = lexical_input.lower()
+            tld_guess = ""
+            i = len(text) - 1
+            while i >= 0 and text[i].isalpha():
+                i -= 1
+            if i >= 0 and i + 1 < len(text) and text[i] == '.':
+                tld_guess = text[i + 1:]
+            if tld_guess:
+                tld_candidate = tld_guess
+
         tld_result = self.tld_dfa.check(tld_candidate)
-        lexical_result = self.lexical_analyzer.analyze(tokens["hostname"])
+        # Lexical analyzer should operate on the chosen input (clean hostname, or fallback opaque/path)
+        lexical_result = self.lexical_analyzer.analyze(lexical_input)
+
+        # If the host is an IP address, force the TLD check to trigger as "no-TLD IP host" signal.
+        if hostname_clean and self.lexical_analyzer.check_is_ip(hostname_clean):
+            tld_result = {
+                "triggered": True,
+                "state": "IP_HOST",
+                "reason": "Host is an IP address (no TLD) - commonly used in suspicious URLs",
+                "value": "ip",
+                "risk_score": 1.0
+            }
         
         # Userinfo Bypass Logic (.zip/.mov + @)
-        is_risky_tld = tld_result["value"] in ["zip", "mov"]
+        # Some URLs (e.g., IP hosts) have no TLD; guard against missing `value`.
+        is_risky_tld = tld_result.get("value", "") in ["zip", "mov"]
         has_at_symbol = "@" in url
         
         if is_risky_tld and has_at_symbol:

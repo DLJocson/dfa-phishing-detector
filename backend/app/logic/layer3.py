@@ -1,4 +1,8 @@
-"""Layer 3: Threat DFA checks (Chained URLs, Dynamic DNS, Redirects)"""
+# ---------------------------------------------------------------------------
+# COMPONENT: Layer3 - Threat Detection Analysis
+# DESCRIPTION: Implements advanced DFA checks for chained URLs, dynamic DNS patterns,
+# and redirect parameter detection for sophisticated phishing attacks.
+# ---------------------------------------------------------------------------
 
 from typing import Dict
 from .tokenizer import TokenizerDFA
@@ -6,200 +10,213 @@ from .tokenizer import TokenizerDFA
 
 class ChainedDFA:
     """
-    DFA for chained URL detection in query parameter VALUES only.
-    
-    Language: Detect embedded URLs (http://, https://, //) ONLY after = in query parameters.
-    This eliminates false positives from paths and bare parameter names.
-    
-    Key states:
-    - Scanning through path/query normally
-    - FOUND_EQUAL: Transition to this state when '=' is encountered (query value starts)
-    - FOUND_EQUAL_H through FOUND_EQUAL_PROTOCOL: Protocol matching ONLY from FOUND_EQUAL
-    - FOUND_EQUAL_PROTOCOL: Accepting state (embedded protocol found in value)
+    Pure DFA for chained URL detection in query parameter values.
+    Description: Detects embedded URLs within query parameter values,
+    including both literal and encoded forms of 'http://' and 'https://'.
+    Supports deep chaining (multiple embedded URLs) and scores risk accordingly.
     """
     
-    START = "START"
-    SCANNING = "SCANNING"
-    FOUND_EQUAL = "FOUND_EQUAL"           # After '=' - now in query parameter VALUE
-    FOUND_EQUAL_H = "FOUND_EQUAL_H"       # 'h' after '='
-    FOUND_EQUAL_HT = "FOUND_EQUAL_HT"     # 'ht' after '='
-    FOUND_EQUAL_HTT = "FOUND_EQUAL_HTT"   # 'htt' after '='
-    FOUND_EQUAL_HTTP = "FOUND_EQUAL_HTTP" # 'http' after '='
-    FOUND_EQUAL_COLON = "FOUND_EQUAL_COLON"  # 'http:' after '='
-    FOUND_EQUAL_SLASH1 = "FOUND_EQUAL_SLASH1"  # 'http:/' after '='
-    FOUND_EQUAL_PROTOCOL = "FOUND_EQUAL_PROTOCOL"  # 'http://' or 'https://' after '='
-    ACCEPT = "ACCEPT"
+    """
+    Formal Definition: M = (Q, Σ, δ, q₀, F)
+    Q = {START, SCANNING, FOUND_EQUAL, FOUND_H, FOUND_HT, FOUND_HTT, FOUND_HTTP,
+         FOUND_COLON, FOUND_PERC_COLON, FOUND_3_COLON, FOUND_PERC_DBL, FOUND_2_DBL, FOUND_5_DBL,
+         FOUND_SLASH1, FOUND_PERC_SLASH1, FOUND_2_SLASH1, FOUND_PROTOCOL_COMPLETE, ACCEPT, REJECT}
+    Σ = {h, t, p, s, :, /, %, 2, 3, 5, a, f, =, other}
+    q₀ = START
+    F = {FOUND_PROTOCOL_COMPLETE}
+    """
+    
+    START                       = "START"
+    SCANNING                    = "SCANNING"
+    FOUND_EQUAL                 = "FOUND_EQUAL"                 # After '=' - now in query parameter VALUE
+    
+    FOUND_H                     = "FOUND_H"                     # 'h' after '='
+    FOUND_HT                    = "FOUND_HT"                    # 'ht' after '='
+    FOUND_HTT                   = "FOUND_HTT"                   # 'htt' after '='
+    FOUND_HTTP                  = "FOUND_HTTP"                  # 'http' after '='
+    
+    FOUND_COLON                 = "FOUND_COLON"                 # 'http:' after '='
+    FOUND_PERC_COLON            = "FOUND_PERC_COLON"            # %
+    FOUND_3_COLON               = "FOUND_3_COLON"               # 3 (after %)
+    FOUND_PERC_DBL              = "FOUND_PERC_DBL"              # % (start of double)
+    FOUND_2_DBL                 = "FOUND_2_DBL"                 # 2 (after %)
+    FOUND_5_DBL                 = "FOUND_5_DBL"                 # 5 (after %2)
+    
+    
+    FOUND_SLASH1                = "FOUND_SLASH1"                # 'http:/' after '='
+    FOUND_PERC_SLASH1           = "FOUND_PERC_SLASH1"           # % (for first slash)
+    FOUND_2_SLASH1              = "FOUND_2_SLASH1"              # 2 (after % for first slash)
+    FOUND_PROTOCOL_COMPLETE     = "FOUND_PROTOCOL_COMPLETE"     # 'http://' or 'https://' after '='
+    
+    ACCEPT                      = "ACCEPT"
+    REJECT                      = "REJECT"
+    
     REJECT = "REJECT"
     
     def __init__(self):
-        """
-        Build transition table for Chained URL DFA.
-        Key change: Protocol detection ONLY allowed after '=' (query parameter value context).
-        """
-        self._transition_table = {
-            # ===== SCANNING STATES (path and parameter names) =====
-            # In path/query, but NOT in a parameter value (before '=')
-            (self.START, "="): self.FOUND_EQUAL,
-            (self.START, "other"): self.SCANNING,
-            (self.SCANNING, "="): self.FOUND_EQUAL,  # Reset to parameter value context
-            (self.SCANNING, "h"): self.SCANNING,
-            (self.SCANNING, "t"): self.SCANNING,
-            (self.SCANNING, "p"): self.SCANNING,
-            (self.SCANNING, "s"): self.SCANNING,
-            (self.SCANNING, ":"): self.SCANNING,
-            (self.SCANNING, "/"): self.SCANNING,
-            (self.SCANNING, "other"): self.SCANNING,
-            
-            # ===== FOUND_EQUAL: We are now in a query parameter VALUE =====
-            (self.FOUND_EQUAL, "h"): self.FOUND_EQUAL_H,
-            (self.FOUND_EQUAL, "other"): self.FOUND_EQUAL,  # Non-match continues in value
-            (self.FOUND_EQUAL, "="): self.FOUND_EQUAL,     # Multiple = symbols
-            (self.FOUND_EQUAL, "t"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL, "p"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL, "s"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL, ":"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL, "/"): self.FOUND_EQUAL,
-            
-            # ===== FOUND_EQUAL_H: We have 'h' after '=' =====
-            (self.FOUND_EQUAL_H, "t"): self.FOUND_EQUAL_HT,
-            (self.FOUND_EQUAL_H, "h"): self.FOUND_EQUAL_H,
-            (self.FOUND_EQUAL_H, "other"): self.FOUND_EQUAL,  # Mismatch: reset to general value scanning
-            (self.FOUND_EQUAL_H, "="): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_H, "p"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_H, "s"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_H, ":"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_H, "/"): self.FOUND_EQUAL,
-            
-            # ===== FOUND_EQUAL_HT: We have 'ht' after '=' =====
-            (self.FOUND_EQUAL_HT, "t"): self.FOUND_EQUAL_HTT,
-            (self.FOUND_EQUAL_HT, "h"): self.FOUND_EQUAL_H,
-            (self.FOUND_EQUAL_HT, "other"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HT, "="): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HT, "p"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HT, "s"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HT, ":"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HT, "/"): self.FOUND_EQUAL,
-            
-            # ===== FOUND_EQUAL_HTT: We have 'htt' after '=' =====
-            (self.FOUND_EQUAL_HTT, "p"): self.FOUND_EQUAL_HTTP,
-            (self.FOUND_EQUAL_HTT, "h"): self.FOUND_EQUAL_H,
-            (self.FOUND_EQUAL_HTT, "t"): self.FOUND_EQUAL_HTT,
-            (self.FOUND_EQUAL_HTT, "other"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTT, "="): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTT, "s"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTT, ":"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTT, "/"): self.FOUND_EQUAL,
-            
-            # ===== FOUND_EQUAL_HTTP: We have 'http' after '=' =====
-            (self.FOUND_EQUAL_HTTP, ":"): self.FOUND_EQUAL_COLON,
-            (self.FOUND_EQUAL_HTTP, "s"): self.FOUND_EQUAL_HTTP,  # Can be 'https' variant
-            (self.FOUND_EQUAL_HTTP, "h"): self.FOUND_EQUAL_H,
-            (self.FOUND_EQUAL_HTTP, "other"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTTP, "="): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTTP, "t"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTTP, "p"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_HTTP, "/"): self.FOUND_EQUAL,
-            
-            # ===== FOUND_EQUAL_COLON: We have 'http:' after '=' =====
-            (self.FOUND_EQUAL_COLON, "/"): self.FOUND_EQUAL_SLASH1,
-            (self.FOUND_EQUAL_COLON, "h"): self.FOUND_EQUAL_H,
-            (self.FOUND_EQUAL_COLON, "other"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_COLON, "="): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_COLON, "t"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_COLON, "p"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_COLON, "s"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_COLON, ":"): self.FOUND_EQUAL,
-            
-            # ===== FOUND_EQUAL_SLASH1: We have 'http:/' after '=' =====
-            (self.FOUND_EQUAL_SLASH1, "/"): self.FOUND_EQUAL_PROTOCOL,  # Reached 'http://'
-            (self.FOUND_EQUAL_SLASH1, "h"): self.FOUND_EQUAL_H,
-            (self.FOUND_EQUAL_SLASH1, "other"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_SLASH1, "="): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_SLASH1, "t"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_SLASH1, "p"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_SLASH1, "s"): self.FOUND_EQUAL,
-            (self.FOUND_EQUAL_SLASH1, ":"): self.FOUND_EQUAL,
-            
-            # ===== FOUND_EQUAL_PROTOCOL: Accepting state - found embedded protocol after '=' =====
-            # Once we detect 'http://' or 'https://' in a parameter value, accept any following chars
-            (self.FOUND_EQUAL_PROTOCOL, "h"): self.FOUND_EQUAL_PROTOCOL,
-            (self.FOUND_EQUAL_PROTOCOL, "t"): self.FOUND_EQUAL_PROTOCOL,
-            (self.FOUND_EQUAL_PROTOCOL, "p"): self.FOUND_EQUAL_PROTOCOL,
-            (self.FOUND_EQUAL_PROTOCOL, "s"): self.FOUND_EQUAL_PROTOCOL,
-            (self.FOUND_EQUAL_PROTOCOL, ":"): self.FOUND_EQUAL_PROTOCOL,
-            (self.FOUND_EQUAL_PROTOCOL, "/"): self.FOUND_EQUAL_PROTOCOL,
-            (self.FOUND_EQUAL_PROTOCOL, "="): self.FOUND_EQUAL_PROTOCOL,
-            (self.FOUND_EQUAL_PROTOCOL, "other"): self.FOUND_EQUAL_PROTOCOL,
-        }
+        self._build_transition_table()
         
-        # Only FOUND_EQUAL_PROTOCOL is accepting (embedded protocol in parameter value)
-        self._accepting_states = {self.FOUND_EQUAL_PROTOCOL}
-    
+    def _build_transition_table(self):
+        """
+        Build the DFA transition table for chained URL detection.
+        """
+        self._transitions = {}
+        
+        # Helper to set transitions
+        def set_trans(state, char, next_state):
+            if state not in self._transitions: self._transitions[state] = {}
+            self._transitions[state][char] = next_state
+
+        # 1. SCANNING (Looking for '=')
+        # -----------------------------
+        set_trans(self.START, "=", self.FOUND_EQUAL)
+        set_trans(self.START, "other", self.SCANNING)
+        
+        set_trans(self.SCANNING, "=", self.FOUND_EQUAL)
+        set_trans(self.SCANNING, "other", self.SCANNING)
+        
+        # 2. MATCHING 'http' or 'https' (Case insensitive handled by classifier)
+        # -----------------------------
+        # From FOUND_EQUAL, we look for 'h'
+        set_trans(self.FOUND_EQUAL, "h", self.FOUND_H)
+        set_trans(self.FOUND_EQUAL, "=", self.FOUND_EQUAL) # Handle double equals
+        set_trans(self.FOUND_EQUAL, "other", self.FOUND_EQUAL)
+        
+        set_trans(self.FOUND_H, "t", self.FOUND_HT)
+        set_trans(self.FOUND_H, "h", self.FOUND_H) # 'hh' case
+        set_trans(self.FOUND_H, "other", self.FOUND_EQUAL) # Reset to value scanning
+        
+        set_trans(self.FOUND_HT, "t", self.FOUND_HTT)
+        set_trans(self.FOUND_HT, "other", self.FOUND_EQUAL)
+        
+        set_trans(self.FOUND_HTT, "p", self.FOUND_HTTP)
+        set_trans(self.FOUND_HTT, "other", self.FOUND_EQUAL)
+        
+        # 3. MATCHING ':' OR '%3A' OR '%253A'
+        # -----------------------------
+        # Path A: Literal ':'
+        set_trans(self.FOUND_HTTP, ":", self.FOUND_COLON)
+        set_trans(self.FOUND_HTTP, "s", self.FOUND_HTTP) # handle https
+        
+        # Path B: Encoded '%'
+        set_trans(self.FOUND_HTTP, "%", self.FOUND_PERC_COLON)
+        set_trans(self.FOUND_HTTP, "other", self.FOUND_EQUAL)
+
+        # Handling %3A (Encoded :)
+        set_trans(self.FOUND_PERC_COLON, "3", self.FOUND_3_COLON) # Found %3
+        set_trans(self.FOUND_PERC_COLON, "2", self.FOUND_2_DBL)   # Found %2 (Start of %25)
+        set_trans(self.FOUND_PERC_COLON, "other", self.FOUND_EQUAL)
+        
+        set_trans(self.FOUND_3_COLON, "a", self.FOUND_COLON) # Found %3A -> Treated as :
+        set_trans(self.FOUND_3_COLON, "other", self.FOUND_EQUAL)
+
+        # Handling %253A (Double Encoded :)
+        # We saw %2, now expect 5
+        set_trans(self.FOUND_2_DBL, "5", self.FOUND_5_DBL) # Found %25 -> Decodes to %
+        set_trans(self.FOUND_2_DBL, "f", self.FOUND_SLASH1) # Edge case: %2F is slash
+        set_trans(self.FOUND_2_DBL, "other", self.FOUND_EQUAL)
+        
+        # Now we have the decoded %, expect 3 then A
+        set_trans(self.FOUND_5_DBL, "3", self.FOUND_3_COLON) # %253...
+        set_trans(self.FOUND_5_DBL, "other", self.FOUND_EQUAL)
+
+        # 4. MATCHING '/' OR '%2F' (First Slash)
+        # -----------------------------
+        set_trans(self.FOUND_COLON, "/", self.FOUND_SLASH1)
+        set_trans(self.FOUND_COLON, "%", self.FOUND_PERC_SLASH1)
+        set_trans(self.FOUND_COLON, "other", self.FOUND_EQUAL)
+
+        set_trans(self.FOUND_PERC_SLASH1, "2", self.FOUND_2_SLASH1)
+        set_trans(self.FOUND_PERC_SLASH1, "other", self.FOUND_EQUAL)
+        
+        set_trans(self.FOUND_2_SLASH1, "f", self.FOUND_SLASH1) # %2F -> /
+        set_trans(self.FOUND_2_SLASH1, "other", self.FOUND_EQUAL)
+
+        # 5. MATCHING '/' OR '%2F' (Second Slash) -> COMPLETE
+        # -----------------------------
+        set_trans(self.FOUND_SLASH1, "/", self.FOUND_PROTOCOL_COMPLETE)
+        set_trans(self.FOUND_SLASH1, "%", self.FOUND_PERC_SLASH1) # Recycle state for next slash logic
+        set_trans(self.FOUND_SLASH1, "other", self.FOUND_EQUAL)
+
+        # Note: If we recycle FOUND_PERC_SLASH1 -> FOUND_2_SLASH1 -> FOUND_SLASH1, 
+        # we need a way to distinguish 1st slash from 2nd slash completion. 
+        # For simplicity, we will map the *output* of the second 
+        # encoded slash loop to FOUND_PROTOCOL_COMPLETE.
+        
+        # Override for the second slash specific path to ensure completion
+        # We create specific states for second slash to avoid loop ambiguity
+        self.FOUND_PERC_SLASH2 = "FOUND_PERC_SLASH2"
+        self.FOUND_2_SLASH2 = "FOUND_2_SLASH2"
+        
+        set_trans(self.FOUND_SLASH1, "%", self.FOUND_PERC_SLASH2)
+        set_trans(self.FOUND_PERC_SLASH2, "2", self.FOUND_2_SLASH2)
+        set_trans(self.FOUND_2_SLASH2, "f", self.FOUND_PROTOCOL_COMPLETE)
+        
+        # 6. ACCEPT STATE BEHAVIOR
+        # ------------------------
+        # Once found, we stay in scanning to find MORE (Deep Chaining)
+        # The 'check' loop handles the accumulation.
+        set_trans(self.FOUND_PROTOCOL_COMPLETE, "other", self.FOUND_EQUAL)
+        set_trans(self.FOUND_PROTOCOL_COMPLETE, "h", self.FOUND_H) # Could start immediately?
+        
     def _classify_char(self, char: str) -> str:
-        """Classify character for state transition"""
-        char_lower = char.lower()
-        if char_lower == "h":
-            return "h"
-        elif char_lower == "t":
-            return "t"
-        elif char_lower == "p":
-            return "p"
-        elif char_lower == "s":
-            return "s"
-        elif char_lower == ":":
-            return ":"
-        elif char_lower == "/":
-            return "/"
-        else:
-            return "other"
-    
+        c = char.lower()
+        if c in "htps:/%=235af": return c
+        return "other"
+
     def _transition(self, state: str, char_type: str) -> str:
-        """Transition function δ(q, σ) → q'"""
-        key = (state, char_type)
-        return self._transition_table.get(key, self.REJECT)
-    
+        if state in self._transitions and char_type in self._transitions[state]:
+            return self._transitions[state][char_type]
+        if state in self._transitions and "other" in self._transitions[state]:
+            return self._transitions[state]["other"]
+        return self.SCANNING # Default fallback
+
     def check(self, query: str, path: str) -> Dict:
-        """
-        Execute ChainedDFA: Detect embedded URLs in query parameter VALUES only (after '=').
-        Returns risk assessment based on whether protocol is found post-equals.
-        """
         text_to_check = f"{path}?{query}" if query else path
-        
-        if not text_to_check:
-            return {
-                "triggered": False,
-                "state": self.REJECT,
-                "risk_score": 0.0,
-                "details": None
-            }
-        
         state = self.START
-        protocol_found = False
+        hit_count = 0 # Counter for Deep Chaining
         
-        # Pure DFA execution: feed each character through transition table
         for char in text_to_check:
             char_type = self._classify_char(char)
             state = self._transition(state, char_type)
             
-            # Check if we've reached the accepting state
-            if state == self.FOUND_EQUAL_PROTOCOL:
-                protocol_found = True
+            # Cyclic detection logic
+            if state == self.FOUND_PROTOCOL_COMPLETE:
+                hit_count += 1
+                state = self.FOUND_EQUAL # Reset to look for more in the value
         
-        # Accept only if we're in FOUND_EQUAL_PROTOCOL state (embedded protocol in parameter value)
-        triggered = state in self._accepting_states
+        triggered = hit_count > 0
+        risk_score = 0
         
+        # Weighted scoring based on PDF
+        if hit_count == 1:
+            risk_score = 2.0 # Critical (Chained Redirect)
+        elif hit_count > 1:
+            risk_score = 3.0 # Critical + (Deep Chaining / Multi-hop)
+            
+        final_state = self.FOUND_PROTOCOL_COMPLETE if triggered else self.REJECT
+        
+        # Generate reason message for frontend display
+        reason = ""
+        if triggered:
+            if hit_count == 1:
+                reason = "Chained URL detected: embedded URL found in query parameter"
+            else:
+                reason = f"Deep chaining detected: {hit_count} embedded URLs found in query parameters"
+        else:
+            reason = "No chained URLs detected"
+
         return {
             "triggered": triggered,
-            "state": state,
-            "risk_score": 2.0 if triggered else 0.0,
-            "reason": "Embedded URL detected in query parameter value (http://, https://, //) - possible redirect attack" if triggered else "No embedded URLs in parameter values detected",
+            "state": final_state,
+            "risk_score": risk_score,
+            "reason": reason,
             "details": {
-                "query": query,
-                "path": path,
-                "pattern_detected": "http://, https://, or // found in query parameter VALUE (after =)",
-                "warning": "Embedded URL in parameter value detected - possible redirect attack"
-            } if triggered else None
+                "hit_count": hit_count,
+                "warning": "Chained URL detected" if triggered else None
+            }
         }
+
 
 
 class DynamicDFA:
@@ -212,6 +229,15 @@ class DynamicDFA:
     2. Hostname Digit Detector: Detects 5+ consecutive digits ONLY in hostname portion
        - Resets digit counter after '/' (entering path) or '?' (entering query)
        - Ignores all digits in path and query portions
+    """
+    
+    """
+    Formal Definition: M = (Q, Σ, δ, q₀, F)
+    Q = Parameter counting states U Hostname digit detection states
+    Σ_param = {&, other}
+    Σ_hostname = {digit, path_query_boundary, other}
+    q₀ = COUNT_0 for parameters, HOST_DIGIT_0 for hostname digits
+    F = {COUNT_EXCESSIVE, HOST_DIGIT_5_PLUS}
     """
     
     # ===== PARAMETER COUNTING STATES =====
@@ -479,6 +505,16 @@ class RedirectDFA:
     - REDIR_PROTOCOL_FOUND: Accept only if we detect http:// or https:// in value
     """
     
+    """
+    Formal Definition: M = (Q, Σ, δ, q₀, F)
+    Q = {START, trie states for keywords, FOUND_REDIRECT_PARAM, REDIR_VALUE_START,
+         REDIR_H, REDIR_HT, REDIR_HTT, REDIR_HTTP, REDIR_HTTP_COLON,
+         REDIR_HTTP_SLASH1, REDIR_PROTOCOL_FOUND, ACCEPT, REJECT}
+    Σ = {a-z, 0-9, :, /, =, &, other}
+    q₀ = START
+    F = {REDIR_PROTOCOL_FOUND}
+    """
+    
     START = "START"
     FOUND_REDIRECT_PARAM = "FOUND_REDIRECT_PARAM"  # After '=' of a redirect keyword
     
@@ -723,6 +759,11 @@ class RedirectDFA:
             } if triggered else None
         }
 
+
+# ---------------------------------------------------------------------------
+# COMPONENT: Layer3
+# DESCRIPTION: Orchestrates all Layer 3 DFA checks and aggregates results.
+# ---------------------------------------------------------------------------
 
 class Layer3:
     """Layer 3 coordinator: combines Chained, Dynamic, and Redirect DFA checks"""

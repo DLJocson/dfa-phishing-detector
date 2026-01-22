@@ -22,14 +22,14 @@ const InputBar = ({ onAnalyze, isLoading }) => {
 
   const exampleUrls = {
     suspicious: [
-      'http://paypal-secure-verify.com/login',
-      'https://www.google.com.secure-login.tk',
-      'file://malicious-script.exe',
+      'http://sub1.sub2.sub3.suspicious-domain-name-with-excessive-hyphens.xyz/login/verify/account/details/update/secure/ref/123456789',
+      'https://xn--login.secure.update.paypаl.com',
+      'https://server12345.com/click?id=1&u=2&s=3&t=4&m=5&redirect=http://evil.com',
+      'http://xn--secure-login.update12345.ru/verify?dest=http://phish.com',
+      'ftp://a.b.c.paypаl.tk/limit?q=http://bad.com'
     ],
     benign: [
-      'https://www.google.com',
-      'https://github.com',
-      'https://www.example.com/path/to/resource',
+      'https://www.google.com'
     ],
   };
 
