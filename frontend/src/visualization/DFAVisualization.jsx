@@ -32,7 +32,6 @@ const DFAVisualization = ({ analysis }) => {
   const renderLayerStates = (layer, layerIndex) => {
     const checks = Object.entries(layer.checks || {});
     const triggeredChecks = checks.filter(([_, check]) => check.triggered);
-    const firstTriggeredIndex = checks.findIndex(([_, check]) => check?.triggered);
     
     return (
       <div
@@ -56,13 +55,9 @@ const DFAVisualization = ({ analysis }) => {
           </div>
           
           {checks.map(([checkName, checkResult], checkIndex) => {
-            // Layout Logic: subsequent checks appear "skipped" if a threat is detected
-            const isSkipped = firstTriggeredIndex >= 0 && checkIndex > firstTriggeredIndex;
-            const stateClass = isSkipped
-              ? 'skipped'
-              : checkResult.triggered
-                ? 'accept-triggered'
-                : 'accept-safe';
+            const stateClass = checkResult.triggered
+              ? 'accept-triggered'
+              : 'accept-safe';
 
             return (
               <React.Fragment key={checkIndex}>
@@ -72,14 +67,11 @@ const DFAVisualization = ({ analysis }) => {
                 </div>
                 <div className={`dfa-state ${stateClass}`}>
                   <div className="state-label">{checkName}</div>
-                  {!isSkipped && checkResult.triggered && (
+                  {checkResult.triggered && (
                     <div className="state-indicator triggered">⚠</div>
                   )}
-                  {!isSkipped && !checkResult.triggered && (
+                  {!checkResult.triggered && (
                     <div className="state-indicator safe">✓</div>
-                  )}
-                  {isSkipped && (
-                    <div className="state-indicator skipped">↷</div>
                   )}
                 </div>
               </React.Fragment>
@@ -109,10 +101,6 @@ const DFAVisualization = ({ analysis }) => {
         <div className="legend-item">
           <span className="legend-icon triggered">⚠</span>
           <span>Threat Detected</span>
-        </div>
-        <div className="legend-item">
-          <span className="legend-icon skipped">↷</span>
-          <span>Skipped</span>
         </div>
       </div>
     </div>
