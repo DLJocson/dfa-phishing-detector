@@ -10,10 +10,12 @@ from .tokenizer import TokenizerDFA
 
 class ChainedDFA:
     """
-    Pure DFA for chained URL detection in query parameter values.
-    Description: Detects embedded URLs within query parameter values,
-    including both literal and encoded forms of 'http://' and 'https://'.
-    Supports deep chaining (multiple embedded URLs) and scores risk accordingly.
+    Pure DFA for chained URL detection: embedded URLs in query parameters AND
+    brand/domain embeddings in hostnames/paths (e.g., paypal, skype, amazon embedded).
+    Description: Detects:
+    1. Embedded protocols (http://, https://) in query parameter values
+    2. Known brand names embedded as subdomains or in path segments
+    Supports deep chaining and scores risk accordingly.
     """
     
     """
@@ -24,6 +26,8 @@ class ChainedDFA:
     Σ = {h, t, p, s, :, /, %, 2, 3, 5, a, f, =, other}
     q₀ = START
     F = {FOUND_PROTOCOL_COMPLETE}
+    
+    Also checks for brand embeddings: paypal, skype, amazon, etc. in hostnames/paths
     """
     
     START                       = "START"
@@ -55,6 +59,36 @@ class ChainedDFA:
     
     def __init__(self):
         self._build_transition_table()
+        # Known brand names/domains that appear in phishing attacks
+        self.known_brands = {
+            "paypal", "paypai", "pay-pal", "paypa",
+            "skype", "skype", "sky",
+            "amazon", "amaz",
+            "apple", "appid", "appleid",
+            "google", "goog",
+            "microsoft", "office365", "outlook", "onedrive",
+            "facebook", "meta", "instagram", "whatsapp",
+            "twitter", "x.com",
+            "tiktok",
+            "steam", "battlenet",
+            "coinbase", "blockchain",
+            "kraken", "binance",
+            "ebay",
+            "airbnb",
+            "uber",
+            "chase", "amex", "hsbc", "lloyds", "bbva", "itau",
+            "visa", "mastercard", "discover",
+            "venmo", "cashapp", "gpay",
+            "vk", "viber", "telegram",
+            "pinterest", "linkedin",
+            "slack", "teams",
+            "adobe", "photoshop",
+            "salesforce", "zendesk",
+            # PayPal-specific patterns
+            "webscr", "cgi", "bin", "cmd", "dispatch",
+            # Pattern keywords
+            "login", "signin", "auth", "verify", "secure",
+        }
         
     def _build_transition_table(self):
         """
@@ -185,12 +219,26 @@ class ChainedDFA:
                 hit_count += 1
                 state = self.FOUND_EQUAL # Reset to look for more in the value
         
+        # BRAND EMBEDDING DETECTION: check hostname + path for known brands
+        # E.g., "paypal.com.cgi.bin", "login.SkyPe.com", "www.paypal.com/fr/cgi-bin"
+        full_text = f"{path}?{query}".lower() if query else path.lower()
+        brand_hits = 0
+        
+        # Split by common delimiters and check segments
+        import re
+        segments = re.split(r'[./?&=:-]', full_text)
+        for segment in segments:
+            if segment in self.known_brands:
+                brand_hits += 1
+                hit_count += 1
+                break  # Count brand embedding once
+        
         triggered = hit_count > 0
         risk_score = 0
         
         # Weighted scoring based on PDF
         if hit_count == 1:
-            risk_score = 2.0 # Critical (Chained Redirect)
+            risk_score = 2.0 # Critical (Chained Redirect / Brand Embedding)
         elif hit_count > 1:
             risk_score = 3.0 # Critical + (Deep Chaining / Multi-hop)
             
@@ -199,10 +247,12 @@ class ChainedDFA:
         # Generate reason message for frontend display
         reason = ""
         if triggered:
-            if hit_count == 1:
+            if brand_hits > 0 and hit_count == 1:
+                reason = "Brand embedding detected: known brand embedded in URL structure"
+            elif hit_count == 1:
                 reason = "Chained URL detected: embedded URL found in query parameter"
             else:
-                reason = f"Deep chaining detected: {hit_count} embedded URLs found in query parameters"
+                reason = f"Deep chaining detected: {hit_count} embedded URLs/brands found in URL"
         else:
             reason = "No chained URLs detected"
 
@@ -213,7 +263,8 @@ class ChainedDFA:
             "reason": reason,
             "details": {
                 "hit_count": hit_count,
-                "warning": "Chained URL detected" if triggered else None
+                "brand_hits": brand_hits,
+                "warning": "Chained/Brand embedding detected" if triggered else None
             }
         }
 

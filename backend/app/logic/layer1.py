@@ -500,53 +500,6 @@ class TLDDFA:
             "risk_score": 1.0 if triggered else 0.0
         }
 
-# ---------------------------------------------------------------------------
-# COMPONENT: LexicalAnalyzer
-# DESCRIPTION: Extracts lexical features from hostnames including IP detection.
-# ---------------------------------------------------------------------------
-# This component extracts lexical features from the hostname,
-# such as counting dots and hyphens, and checks if the hostname is an IP address
-class LexicalAnalyzer:
-    def check_is_ip(self, hostname: str) -> bool:
-        if not hostname: return False
-        
-        allowed = set("0123456789.")
-        for char in hostname:
-            if char not in allowed:
-                return False
-        return True
-
-    def analyze(self, hostname: str) -> Dict:
-        dot_count = hostname.count('.')
-        hyphen_count = hostname.count('-')
-        is_ip = self.check_is_ip(hostname)
-
-        triggered = False
-        risk = 0.0
-        reasons = []
-
-        if is_ip:
-            triggered = True
-            risk += 0.8
-            reasons.append("Hostname is an IP Address")
-
-        if dot_count > 3:
-            triggered = True
-            risk += 0.2
-            reasons.append(f"High subdomain depth (dots={dot_count})")
-        
-        if hyphen_count > 2:
-            triggered = True
-            risk += 0.2
-            reasons.append(f"High hyphen count ({hyphen_count})")
-
-        return {
-            "triggered": triggered,
-            "risk_score": min(risk, 1.0),
-            "reason": "; ".join(reasons) if reasons else "Lexical OK",
-            "details": {"is_ip": is_ip, "dots": dot_count, "hyphens": hyphen_count}
-        }
-
 
 # ---------------------------------------------------------------------------
 # COMPONENT: Layer1
@@ -560,7 +513,6 @@ class LexicalAnalyzer:
 #   1. LengthDFA - URL length anomaly detection
 #   2. SchemaDFA - Malicious protocol detection  
 #   3. TLDDFA - High-risk TLD detection
-#   4. LexicalAnalyzer - IP address and lexical feature detection
 
 class Layer1:
     def __init__(self, length_threshold: int = 75, debug: bool = False):
@@ -570,7 +522,6 @@ class Layer1:
         self.length_dfa = LengthDFA(threshold=length_threshold, debug=debug)
         self.schema_dfa = SchemaDFA(debug=debug)
         self.tld_dfa = TLDDFA(debug=debug)
-        self.lexical_analyzer = LexicalAnalyzer()
         
         # Import tokenizer for URL parsing
         from .tokenizer import TokenizerDFA
@@ -614,13 +565,10 @@ class Layer1:
         schema_result = self.schema_dfa.check(tokens["schema"])
         # For schemes without a real hostname (e.g., data:), fall back to the opaque/body/path
         # so Layer 1 can still evaluate TLD/lexical-like signals from the content.
-        lexical_input = hostname_clean
         tld_candidate = hostname_components.get("tld", "").lower()
-        if not lexical_input:
-            lexical_input = tokens.get("path", "") or ""
-            # Attempt to extract a trailing ".tld" from the opaque/path for TLD DFA
-            # Example: "...too-many-hyphens.ru" -> "ru"
-            text = lexical_input.lower()
+        if not hostname_clean:
+            # Attempt to extract a trailing ".tld" from the path/opaque body
+            text = (tokens.get("path", "") or "").lower()
             tld_guess = ""
             i = len(text) - 1
             while i >= 0 and text[i].isalpha():
@@ -631,18 +579,6 @@ class Layer1:
                 tld_candidate = tld_guess
 
         tld_result = self.tld_dfa.check(tld_candidate)
-        # Lexical analyzer should operate on the chosen input (clean hostname, or fallback opaque/path)
-        lexical_result = self.lexical_analyzer.analyze(lexical_input)
-
-        # If the host is an IP address, force the TLD check to trigger as "no-TLD IP host" signal.
-        if hostname_clean and self.lexical_analyzer.check_is_ip(hostname_clean):
-            tld_result = {
-                "triggered": True,
-                "state": "IP_HOST",
-                "reason": "Host is an IP address (no TLD) - commonly used in suspicious URLs",
-                "value": "ip",
-                "risk_score": 1.0
-            }
         
         # Userinfo Bypass Logic (.zip/.mov + @)
         # Some URLs (e.g., IP hosts) have no TLD; guard against missing `value`.
@@ -673,9 +609,7 @@ class Layer1:
         if tld_result["triggered"] == True:
             triggered_count = triggered_count + 1
             
-        # Check lexical result
-        if lexical_result["triggered"] == True:
-            triggered_count = triggered_count + 1
+        # (LexicalAnalyzer removed)
         
         # ----------------------------------------------------------------------
         # CALCULATE TOTAL RISK SCORE
@@ -700,11 +634,7 @@ class Layer1:
             tld_risk = 0.0
         total_risk_score = total_risk_score + tld_risk
         
-        try:
-            lexical_risk = lexical_result["risk_score"]
-        except KeyError:
-            lexical_risk = 0.0
-        total_risk_score = total_risk_score + lexical_risk
+        # (LexicalAnalyzer removed from risk aggregation)
         
         normalized_score = min(total_risk_score, 1.0)
         
@@ -716,7 +646,7 @@ class Layer1:
             print(f"  - Length DFA: {length_result['triggered']}")
             print(f"  - Schema DFA: {schema_result['triggered']}")
             print(f"  - TLD DFA: {tld_result['triggered']}")
-            print(f"  - Lexical & IP Feature Extractor: {lexical_result['triggered']}")
+            # LexicalAnalyzer removed
             print(f"Total Risk Score: {total_risk_score}")
             print(f"{'#'*70}\n")
         
@@ -725,10 +655,9 @@ class Layer1:
             "checks": {
                 "length": length_result,
                 "schema": schema_result,
-                "tld": tld_result,
-                "lexical": lexical_result
+                "tld": tld_result
             },
             "triggered_count": triggered_count,
-            "total_checks": 4,
+            "total_checks": 3,
             "layer_risk_score": round(total_risk_score, 2)
         }
